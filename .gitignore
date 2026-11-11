@@ -1,5 +1,20 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+
 # Compiled class file
 *.class
+
+# Maven
+target/
+
+# Gradle
+.gradle/
+build/
+
+# Environment variables and secrets
+.env
+.env.*
 
 # Log file
 *.log
