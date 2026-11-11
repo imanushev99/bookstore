@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: bookstore
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bookstore
+    username: bookstore
+    password: ${DB_PASSWORD:bookstore_dev}
+
+  flyway:
+    enabled: true
