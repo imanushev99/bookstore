@@ -2,10 +2,13 @@ package com.bookstore.user.infrastructure;
 
 import com.bookstore.user.domain.User;
 import com.bookstore.user.domain.UserRepository;
-
+import com.bookstore.user.domain.UserRole;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,8 +34,7 @@ public class JdbcUserRepository implements UserRepository {
         List<User> users = jdbc.query(
                 sql,
                 Map.of("id", id),
-                USER_ROW_MAPPER
-        );
+                USER_ROW_MAPPER);
 
         return users.stream().findFirst();
     }
@@ -45,11 +47,13 @@ public class JdbcUserRepository implements UserRepository {
                 WHERE email = :email
                 """;
 
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("email", email);
+
         List<User> users = jdbc.query(
                 sql,
-                Map.of("email", email),
-                USER_ROW_MAPPER
-        );
+                params,
+                USER_ROW_MAPPER);
 
         return users.stream().findFirst();
     }
@@ -60,38 +64,28 @@ public class JdbcUserRepository implements UserRepository {
                 SELECT EXISTS (
                     SELECT 1
                     FROM users
-                    WHERE email = :email
-                )
+                    WHERE email = :email)
                 """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("email", email);
 
         Boolean exists = jdbc.queryForObject(
                 sql,
-                Map.of("email", email),
-                Boolean.class
-        );
+                params,
+                Boolean.class);
 
+        // cannot do return exists; because exists could be null -> could throw NPE when unboxing null to boolean
         return Boolean.TRUE.equals(exists);
     }
 
     @Override
     public User save(User user) {
         String sql = """
-                INSERT INTO users (
-                    email,
-                    password_hash,
-                    first_name,
-                    last_name,
-                    role
-                )
-                VALUES (
-                    :email,
-                    :passwordHash,
-                    :firstName,
-                    :lastName,
-                    :role
-                )
-                RETURNING id
-                """;
+                    INSERT INTO users (email, password_hash, first_name, last_name, role)
+                    VALUES (:email, :passwordHash, :firstName, :lastName, :role)
+                    RETURNING id
+                    """;
 
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("email", user.getEmail())
@@ -107,10 +101,7 @@ public class JdbcUserRepository implements UserRepository {
         );
 
         return findById(generatedId)
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Failed to retrieve created user"
-                        ));
+                .orElseThrow(() -> new IllegalStateException("Failed to retrieve created user"));
     }
 
     private static User mapUser(ResultSet rs) throws SQLException {
@@ -121,10 +112,8 @@ public class JdbcUserRepository implements UserRepository {
                 rs.getString("first_name"),
                 rs.getString("last_name"),
                 UserRole.valueOf(rs.getString("role")),
-                rs.getObject("created_at",
-                        java.time.OffsetDateTime.class),
-                rs.getObject("updated_at",
-                        java.time.OffsetDateTime.class)
+                rs.getObject("created_at", java.time.OffsetDateTime.class),
+                rs.getObject("updated_at",  java.time.OffsetDateTime.class)
         );
     }
 }
