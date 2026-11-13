@@ -13,12 +13,11 @@ import java.util.Base64;
 @Configuration
 public class JwtConfig {
     public static final String HMAC_SHA_256 = "HmacSHA256";
-    public static final String $_JWT_SECRET = "${JWT_SECRET}";
     public static final String BOOKSTORE = "bookstore";
 
     private final SecretKey secretKey;
 
-    public JwtConfig(@Value($_JWT_SECRET) String secret) {
+    public JwtConfig(@Value("${JWT_SECRET}") String secret) {
         byte[] keyBytes = Base64.getDecoder().decode(secret);
 
         if (keyBytes.length < 32) {
