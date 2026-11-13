@@ -2,10 +2,22 @@ spring:
   application:
     name: bookstore
 
+  # PostgreSQL database configuration
   datasource:
     url: jdbc:postgresql://localhost:5432/bookstore
     username: bookstore
     password: ${DB_PASSWORD:bookstore_dev}
 
+  # Flyway database migrations
   flyway:
     enabled: true
+    locations: classpath:db/migration
+
+# Embedded web server
+server:
+  port: 8080
+
+# JWT authentication configuration
+app:
+  jwt:
+    expiration-minutes: 15

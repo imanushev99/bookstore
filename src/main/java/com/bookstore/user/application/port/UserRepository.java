@@ -1,4 +1,6 @@
-package com.bookstore.user.domain;
+package com.bookstore.user.application.port;
+
+import com.bookstore.user.domain.User;
 
 import java.util.Optional;
 

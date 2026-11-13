@@ -1,7 +1,7 @@
 package com.bookstore.user.infrastructure;
 
 import com.bookstore.user.domain.User;
-import com.bookstore.user.domain.UserRepository;
+import com.bookstore.user.application.port.UserRepository;
 import com.bookstore.user.domain.UserRole;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
