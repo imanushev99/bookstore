@@ -37,4 +37,12 @@ public class AuthController {
 
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Logout endpoint at this point is meaningless, because it won't invalidate the JWT.
+     * Logout could be handled client-side by discarding the access token.
+     * For now, we rely on the expiration time.
+     * In the future: refresh token can be introduced.
+     * Or: store 'invalidated' JWTs in Redis and check the token on each request
+     */
 }

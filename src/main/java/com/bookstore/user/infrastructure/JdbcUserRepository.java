@@ -16,6 +16,7 @@ import java.util.Optional;
 
 @Repository
 public class JdbcUserRepository implements UserRepository {
+
     private final NamedParameterJdbcTemplate jdbc;
 
     private static final RowMapper<User> USER_ROW_MAPPER =
@@ -104,6 +105,70 @@ public class JdbcUserRepository implements UserRepository {
 
         return findById(generatedId)
                 .orElseThrow(() -> new IllegalStateException("Failed to retrieve created user"));
+    }
+
+    // Use FOR UPDATE NOWAIT, so overlapping requests do not silently overwrite one another.
+    // This prevents simultaneous modification, but it does not prevent sequential updates made after the first transaction commits.
+    // => For protection against stale profile data, we could additionally introduce optimistic versioning later.
+    @Override
+    public Optional<User> findByIdForUpdate(Long id) {
+        String sql = """
+            SELECT *
+            FROM users
+            WHERE id = :id
+            FOR UPDATE NOWAIT
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("id", id);
+
+        return jdbc.query(
+                sql,
+                params,
+                USER_ROW_MAPPER
+        ).stream().findFirst();
+    }
+
+    @Override
+    public void updateProfile(Long userId, String firstName, String lastName) {
+        String sql = """
+            UPDATE users
+            SET first_name = :firstName,
+                last_name = :lastName,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :userId
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("userId", userId)
+                .addValue("firstName", firstName)
+                .addValue("lastName", lastName);
+
+        int updatedRows = jdbc.update(sql, params);
+
+        if (updatedRows != 1) {
+            throw new IllegalStateException("Expected to update exactly one user");
+        }
+    }
+
+    @Override
+    public void updatePassword(Long userId, String passwordHash) {
+        String sql = """
+            UPDATE users
+            SET password_hash = :passwordHash,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :userId
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("userId", userId)
+                .addValue("passwordHash", passwordHash);
+
+        int updatedRows = jdbc.update(sql, params);
+
+        if (updatedRows != 1) {
+            throw new IllegalStateException("Expected to update exactly one user");
+        }
     }
 
     private static User mapUser(ResultSet rs) throws SQLException {
