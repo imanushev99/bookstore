@@ -65,6 +65,24 @@ public class JdbcCategoryRepository implements CategoryRepository {
     }
 
     @Override
+    public List<Long> findExistingIds(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        String sql = """
+            SELECT id
+            FROM categories
+            WHERE id IN (:ids)
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("ids", ids);
+
+        return jdbc.queryForList(sql, params, Long.class);
+    }
+
+    @Override
     public boolean existsByName(String name) {
         String sql = """
                 SELECT EXISTS (
