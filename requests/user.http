@@ -21,7 +21,7 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "firstName": "Jonathan",
+  "firstName": "Jonas",
   "lastName": "Doe"
 }
 

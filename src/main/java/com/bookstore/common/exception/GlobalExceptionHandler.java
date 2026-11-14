@@ -2,8 +2,10 @@ package com.bookstore.common.exception;
 
 import com.bookstore.auth.application.exception.EmailAlreadyExistsException;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -56,9 +58,21 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", exception.getMessage()));
     }
 
-    @ExceptionHandler(CannotAcquireLockException.class)
+    @ExceptionHandler(PessimisticLockingFailureException.class)
     public ResponseEntity<Map<String, String>> handleLockConflict(CannotAcquireLockException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", "This resource is currently being modified. Please try again."));
+    }
+
+    @ExceptionHandler(UncategorizedSQLException.class)
+    public ResponseEntity<Map<String, String>> handleUncategorizedSql(UncategorizedSQLException exception) {
+        String sqlState = exception.getSQLException().getSQLState();
+
+        if ("55P03".equals(sqlState)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "This account is currently being modified. Please try again."));
+        }
+
+        throw exception;
     }
 }
