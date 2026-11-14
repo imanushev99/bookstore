@@ -1,0 +1,85 @@
+### 1. Login and save JWT
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "Password123"
+}
+
+> {% client.global.set("accessToken", response.body.accessToken); %}
+
+
+### 2. Get authenticated user profile
+GET http://localhost:8080/api/users/me
+Authorization: Bearer {{accessToken}}
+
+
+### 3. Update user profile
+PUT http://localhost:8080/api/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Jonathan",
+  "lastName": "Doe"
+}
+
+
+### 4. Get profile after updating
+GET http://localhost:8080/api/users/me
+Authorization: Bearer {{accessToken}}
+
+
+### 5. Change password
+PUT http://localhost:8080/api/users/me/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password123",
+  "newPassword": "NewPassword456"
+}
+
+
+### 6. Login with the new password
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "NewPassword456"
+}
+
+> {% client.global.set("accessToken", response.body.accessToken); %}
+
+
+### 7. Update with invalid profile data (expect 400)
+PUT http://localhost:8080/api/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "",
+  "lastName": "Doe"
+}
+
+
+### 8. Change password with incorrect current password (expect 401)
+PUT http://localhost:8080/api/users/me/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "WrongPassword",
+  "newPassword": "AnotherPassword123"
+}
+
+
+### 9. Access profile without JWT (expect 401)
+GET http://localhost:8080/api/users/me
+
+
+### 10. Access profile with invalid JWT (expect 401)
+GET http://localhost:8080/api/users/me
+Authorization: Bearer invalid.jwt.token

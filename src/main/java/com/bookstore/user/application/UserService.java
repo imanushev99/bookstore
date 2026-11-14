@@ -68,7 +68,7 @@ public class UserService {
 
     private User findUserForUpdate(Long userId) {
         return userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new NoSuchElementException("User not found"));
+                .orElseThrow(() -> new NoSuchElementException(USER_NOT_FOUND));
     }
 
 

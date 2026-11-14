@@ -37,6 +37,12 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    // In case a user submits the same request twice:
+    // the DB is secured from concurrency - the final state will be as expected, BUT
+    // the HTTP response may differ - the 1st successful request will return '204 No Content'
+    // - if the 2nd request runs parallel to the 1st - second response will be '409 Conflict' (FOR UPDATE NOWAIT)
+    // - if the 2nd request runs after the 1st - second response will be '401 Unauthorized' (current password will no longer match)
+    // solution: idempotent requests
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
