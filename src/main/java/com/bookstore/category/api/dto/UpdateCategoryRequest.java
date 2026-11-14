@@ -2,13 +2,13 @@ package com.bookstore.category.api.dto;
 
 import jakarta.validation.constraints.Size;
 
-public class UpdateCategory extends AbstractCategory {
+public class UpdateCategoryRequest extends AbstractCategory {
 
-    public UpdateCategory() {
+    public UpdateCategoryRequest() {
         super();
     }
 
-    public UpdateCategory(String name, String description) {
+    public UpdateCategoryRequest(String name, String description) {
         super(name, description);
     }
 
