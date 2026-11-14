@@ -267,9 +267,7 @@ public class JdbcBookRepository implements BookRepository {
                         rs.getString("description")
                 );
 
-                result.computeIfAbsent(
-                        bookId, key -> new ArrayList<>()
-                ).add(category);
+                result.computeIfAbsent(bookId, key -> new ArrayList<>()).add(category);
             }
 
             return result;
@@ -277,17 +275,13 @@ public class JdbcBookRepository implements BookRepository {
     }
 
     @Override
-    public void replaceCategories(
-            Long bookId,
-            List<Long> categoryIds
-    ) {
+    public void replaceCategories(Long bookId, List<Long> categoryIds) {
         String deleteSql = """
                 DELETE FROM book_categories
                 WHERE book_id = :bookId
                 """;
 
-        MapSqlParameterSource deleteParams =
-                new MapSqlParameterSource()
+        MapSqlParameterSource deleteParams = new MapSqlParameterSource()
                         .addValue("bookId", bookId);
 
         jdbc.update(deleteSql, deleteParams);
@@ -297,14 +291,11 @@ public class JdbcBookRepository implements BookRepository {
         }
 
         String insertSql = """
-                INSERT INTO book_categories (
-                    book_id, category_id
-                )
+                INSERT INTO book_categories (book_id, category_id)
                 VALUES (:bookId, :categoryId)
                 """;
 
-        MapSqlParameterSource[] batch =
-                new MapSqlParameterSource[categoryIds.size()];
+        MapSqlParameterSource[] batch = new MapSqlParameterSource[categoryIds.size()];
 
         for (int i = 0; i < categoryIds.size(); i++) {
             batch[i] = new MapSqlParameterSource()
