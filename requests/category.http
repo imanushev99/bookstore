@@ -1,0 +1,115 @@
+
+### 1. Login as ADMIN and save JWT
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Password123"
+}
+
+> {% client.global.set("adminAccessToken", response.body.accessToken); %}
+
+
+### 2. Get all categories (public)
+GET http://localhost:8080/api/categories
+
+
+### 3. Create category (ADMIN)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Science Fiction",
+  "description": "Science fiction novels and stories"
+}
+
+> {% client.global.set("categoryId", response.body.id); %}
+
+
+### 4. Get category by ID (public)
+GET http://localhost:8080/api/categories/{{categoryId}}
+
+
+### 5. Update category name (ADMIN)
+PATCH http://localhost:8080/api/categories/{{categoryId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Sci-Fi"
+}
+
+
+### 6. Update category description (ADMIN)
+PATCH http://localhost:8080/api/categories/{{categoryId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "description": "Updated science fiction description"
+}
+
+
+### 7. Repeat same update (idempotency)
+PATCH http://localhost:8080/api/categories/{{categoryId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "description": "Updated science fiction description"
+}
+
+
+### 8. Create duplicate category (expect 409)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Sci-Fi",
+  "description": "Duplicate category"
+}
+
+
+### 9. Update with blank name (expect 400)
+PATCH http://localhost:8080/api/categories/{{categoryId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "name": ""
+}
+
+
+### 10. Update with empty JSON (expect 400)
+PATCH http://localhost:8080/api/categories/{{categoryId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{}
+
+
+### 11. Create category without JWT (expect 401)
+POST http://localhost:8080/api/categories
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Category",
+  "description": "Should not be created"
+}
+
+
+### 12. Delete category (ADMIN)
+DELETE http://localhost:8080/api/categories/{{categoryId}}
+Authorization: Bearer {{adminAccessToken}}
+
+
+### 13. Delete same category again (expect 204)
+DELETE http://localhost:8080/api/categories/{{categoryId}}
+Authorization: Bearer {{adminAccessToken}}
+
+
+### 14. Get deleted category (expect 404)
+GET http://localhost:8080/api/categories/{{categoryId}}

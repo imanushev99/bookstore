@@ -46,8 +46,6 @@ CREATE TABLE books (
 
 -- one book can have many categories
 -- one category can have many books
--- default constraint on foreign key is ON DELETE NO ACTION
--- => you cannot delete a category while rows in book_categories still reference it
 
 CREATE TABLE book_categories (
     book_id BIGINT NOT NULL,

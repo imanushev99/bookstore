@@ -41,11 +41,8 @@ public class JwtTokenProvider implements TokenProvider {
                 .claim(ROLE, user.getRole().name())
                 .build();
 
-        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)
-                .build();
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
 
-        return jwtEncoder.encode(
-                JwtEncoderParameters.from(header, claims)
-        ).getTokenValue();
+        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 }

@@ -4,8 +4,10 @@ import com.bookstore.category.api.dto.CategoryResponse;
 import com.bookstore.category.api.dto.CreateCategoryRequest;
 import com.bookstore.category.api.dto.UpdateCategoryRequest;
 import com.bookstore.category.application.exception.CategoryAlreadyExistsException;
+import com.bookstore.category.application.exception.CategoryInUseException;
 import com.bookstore.category.application.port.CategoryRepository;
 import com.bookstore.category.domain.Category;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,6 +67,8 @@ public class CategoryService {
         String name = existing.getName();
         String description = existing.getDescription();
 
+        // rule: if (name != null) then (name != "")
+        //       if (name == null) then (name = existing_name)
         if (request.getName() != null) {
             name = request.getName().trim();
 
@@ -77,6 +81,7 @@ public class CategoryService {
             description = request.getDescription();
         }
 
+        // skip "writing" in DB the same entity
         if (Objects.equals(existing.getName(), name) && Objects.equals(existing.getDescription(), description)) {
             return toResponse(existing);
         }
@@ -93,11 +98,14 @@ public class CategoryService {
 
     @Transactional
     public void deleteCategory(Long id) {
-        if (categoryRepository.findByIdForUpdate(id).isEmpty()) {
-            return;
-        }
+        categoryRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new NoSuchElementException("Category with id " + id + " not found"));
 
-        categoryRepository.deleteById(id);
+        try {
+            categoryRepository.deleteById(id);
+        } catch (DataIntegrityViolationException exception) {
+            throw new CategoryInUseException("Cannot delete category because it is assigned to one or more books", exception);
+        }
     }
 
     private CategoryResponse toResponse(Category category) {
