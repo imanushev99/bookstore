@@ -3,24 +3,18 @@ package com.bookstore.user.infrastructure;
 import com.bookstore.user.domain.User;
 import com.bookstore.user.application.port.UserRepository;
 import com.bookstore.user.domain.UserRole;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Repository
 public class JdbcUserRepository implements UserRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
-
-    private static final RowMapper<User> USER_ROW_MAPPER =
-            (rs, rowNum) -> mapUser(rs);
 
     public JdbcUserRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -34,12 +28,12 @@ public class JdbcUserRepository implements UserRepository {
                 WHERE id = :id
                 """;
 
-        List<User> users = jdbc.query(
-                sql,
-                Map.of("id", id),
-                USER_ROW_MAPPER);
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("id", id);
 
-        return users.stream().findFirst();
+        return jdbc.query(sql, params, this::mapUser)
+                .stream()
+                .findFirst();
     }
 
     @Override
@@ -53,12 +47,8 @@ public class JdbcUserRepository implements UserRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("email", email);
 
-        List<User> users = jdbc.query(
-                sql,
-                params,
-                USER_ROW_MAPPER);
-
-        return users.stream().findFirst();
+        return jdbc.query(sql, params, this::mapUser)
+                .stream().findFirst();
     }
 
     @Override
@@ -122,11 +112,9 @@ public class JdbcUserRepository implements UserRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("id", id);
 
-        return jdbc.query(
-                sql,
-                params,
-                USER_ROW_MAPPER
-        ).stream().findFirst();
+        return jdbc.query(sql, params, this::mapUser)
+                .stream()
+                .findFirst();
     }
 
     @Override
@@ -171,7 +159,7 @@ public class JdbcUserRepository implements UserRepository {
         }
     }
 
-    private static User mapUser(ResultSet rs) throws SQLException {
+    private User mapUser(ResultSet rs, int rowNum) throws SQLException {
         return new User(
                 rs.getLong("id"),
                 rs.getString("email"),
