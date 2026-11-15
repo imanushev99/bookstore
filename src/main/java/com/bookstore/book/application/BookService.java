@@ -80,8 +80,7 @@ public class BookService {
                 request.getCoverImageUrl(),
                 null,
                 null,
-                null
-        );
+                null);
 
         Book savedBook = bookRepository.save(book);
 
@@ -94,6 +93,8 @@ public class BookService {
     public BookResponse updateBook(Long id, UpdateBookRequest request) {
         Book existing = bookRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new NoSuchElementException("Book not found"));
+
+        // Check if metadata changed:
 
         String title = request.getTitle() != null
                 ? request.getTitle().trim()
@@ -125,17 +126,15 @@ public class BookService {
                 coverImageUrl,
                 existing.getCreatedAt(),
                 existing.getUpdatedAt(),
-                existing.getArchivedAt()
-        );
+                existing.getArchivedAt());
 
-        boolean metadataChanged =
-                !Objects.equals(existing.getTitle(), title)
-                        || !Objects.equals(existing.getAuthor(), author)
-                        || !Objects.equals(existing.getDescription(), description)
-                        || existing.getPrice().compareTo(price) != 0
-                        || !Objects.equals(
-                        existing.getCoverImageUrl(), coverImageUrl
-                );
+        boolean metadataChanged = !Objects.equals(existing.getTitle(), title)
+                                    || !Objects.equals(existing.getAuthor(), author)
+                                    || !Objects.equals(existing.getDescription(), description)
+                                    || existing.getPrice().compareTo(price) != 0
+                                    || !Objects.equals(existing.getCoverImageUrl(), coverImageUrl);
+
+        // Check if categories changed:
 
         List<Category> existingCategories = getBookCategories(id);
 
@@ -147,8 +146,7 @@ public class BookService {
             Set<Long> existingIds = new HashSet<>(
                     existingCategories.stream()
                             .map(Category::getId)
-                            .toList()
-            );
+                            .toList());
 
             categoriesChanged = !existingIds.equals(new HashSet<>(request.getCategoryIds()));
         }
@@ -157,6 +155,7 @@ public class BookService {
             return toResponse(existing, existingCategories);
         }
 
+        // check both because if only categoriesChanged == true, metadata still includes updated_at which needs to be updated
         if (metadataChanged || categoriesChanged) {
             bookRepository.updateMetadata(updated);
         }
@@ -165,8 +164,10 @@ public class BookService {
             bookRepository.replaceCategories(id, request.getCategoryIds());
         }
 
-        Book refreshed = bookRepository.findById(id).orElseThrow();
+        Book refreshed = bookRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Book not found"));
 
+        // categories need to be extracted because we have their IDs in the request
         return toResponse(refreshed, getBookCategories(id));
     }
 
@@ -191,7 +192,7 @@ public class BookService {
             throw new IllegalArgumentException("Category IDs are required");
         }
 
-        //validate no duplication
+        //validate no duplication in the input
 
         Set<Long> categoryIdsSet = new HashSet<>(categoryIds);
 
@@ -210,7 +211,8 @@ public class BookService {
     }
 
     private List<Category> getBookCategories(Long bookId) {
-        return bookRepository.findCategoriesByBookIds(List.of(bookId)).getOrDefault(bookId, List.of());
+        return bookRepository.findCategoriesByBookIds(List.of(bookId))
+                .getOrDefault(bookId, List.of());
     }
 
     private BookResponse toResponse(Book book, List<Category> categories) {

@@ -15,14 +15,12 @@ public interface BookRepository {
             String author,
             Long categoryId,
             int limit,
-            long offset
-    );
+            long offset);
 
     long count(
             String title,
             String author,
-            Long categoryId
-    );
+            Long categoryId);
 
     Optional<Book> findById(Long id);
 
@@ -41,7 +39,9 @@ public interface BookRepository {
     // Restore an archived book
     void restoreById(Long id);
 
+    // used in BookResponse, since it contains full information of categories, not just ID's
     Map<Long, List<Category>> findCategoriesByBookIds(List<Long> bookIds);
 
+    // used in updating book categories
     void replaceCategories(Long bookId, List<Long> categoryIds);
 }
