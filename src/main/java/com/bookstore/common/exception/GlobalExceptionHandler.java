@@ -4,8 +4,11 @@ import com.bookstore.auth.application.exception.EmailAlreadyExistsException;
 import com.bookstore.book.application.exception.BookAlreadyExistsException;
 import com.bookstore.category.application.exception.CategoryAlreadyExistsException;
 import com.bookstore.category.application.exception.CategoryInUseException;
+import com.bookstore.idempotency.application.exception.IdempotencyKeyConflictException;
+import com.bookstore.idempotency.application.exception.IdempotencyRequestInProgressException;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.UncategorizedSQLException;
@@ -95,6 +98,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BookAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>> handleBookAlreadyExists(BookAlreadyExistsException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(IdempotencyKeyConflictException.class)
+    public ResponseEntity<Map<String, String>> handleIdempotencyKeyConflict(
+            IdempotencyKeyConflictException exception
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(IdempotencyRequestInProgressException.class)
+    public ResponseEntity<Map<String, String>> handleIdempotencyRequestInProgress(
+            IdempotencyRequestInProgressException exception
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.RETRY_AFTER, "1")
                 .body(Map.of("message", exception.getMessage()));
     }
 

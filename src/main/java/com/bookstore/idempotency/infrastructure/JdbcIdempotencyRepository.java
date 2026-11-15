@@ -74,7 +74,8 @@ public class JdbcIdempotencyRepository implements IdempotencyRepository {
 
         List<IdempotencyRequest> requests = jdbc.query(sql, params, this::mapRequest);
 
-        return requests.stream().findFirst();    }
+        return requests.stream().findFirst();
+    }
 
     @Override
     public void complete(Long id, int responseStatus, String responseBody) {

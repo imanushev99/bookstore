@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
  * idempotencyKey = random UUID generated on the customer's side.
  *
  * requestHash = Ensures that the same idempotency key is not reused for a different operation payload.
- *             = Generate a new idempotency key for every new logical operation, even when the payload is different
+ *             => Generate a new idempotency key for every new logical operation, even when the payload is different.
  *             If there are 2 requests with the same idempotency key, userId, and operation
  *             but with different request body represented by requestHash (for example 2 different books for creation)
  *             then the 2nd request will still fail, regardless it is for a different book, because of the unique constraint

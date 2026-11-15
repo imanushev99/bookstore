@@ -1,10 +1,12 @@
 package com.bookstore.idempotency.application.port;
 
 import com.bookstore.idempotency.domain.IdempotencyRequest;
+import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
+@Repository
 public interface IdempotencyRepository {
     Optional<IdempotencyRequest> findByKey(
             Long userId,
