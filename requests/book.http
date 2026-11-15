@@ -1,0 +1,134 @@
+
+@baseUrl = http://localhost:8080
+@categoryId = 3
+
+### 1. Login as ADMIN and save JWT
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Password123"
+}
+
+> {% client.global.set("adminAccessToken", response.body.accessToken); %}
+
+### 2. Create a book (expect 201)
+POST {{baseUrl}}/api/books
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "Dune",
+  "author": "Frank Herbert",
+  "description": "A science fiction novel",
+  "price": 19.99,
+  "stock": 10,
+  "coverImageUrl": "https://example.com/covers/dune.jpg",
+  "categoryIds": [{{categoryId}}]
+}
+
+> {% client.global.set("bookId", response.body.id); %}
+
+### 3. Get book by ID (expect 200)
+GET {{baseUrl}}/api/books/{{bookId}}
+
+### 4. List all active books (expect 200)
+GET {{baseUrl}}/api/books
+
+### 5. Search by title (expect 200)
+GET {{baseUrl}}/api/books?title=dune
+
+### 6. Search by author (expect 200)
+GET {{baseUrl}}/api/books?author=frank
+
+### 7. Filter by category (expect 200)
+GET {{baseUrl}}/api/books?categoryId={{categoryId}}
+
+### 8. Combine title, author and category filters
+GET {{baseUrl}}/api/books?title=dune&author=frank&categoryId={{categoryId}}
+
+### 9. Pagination - first page
+GET {{baseUrl}}/api/books?page=0&size=5
+
+### 10. Pagination - second page
+GET {{baseUrl}}/api/books?page=1&size=5
+
+### 11. Update book price and title (expect 200)
+PATCH {{baseUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "Dune: Updated Edition",
+  "price": 24.99
+}
+
+### 12. Repeat same update - idempotency (expect 200)
+PATCH {{baseUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "title": "Dune: Updated Edition",
+  "price": 24.99
+}
+
+### 13. Remove all category associations (expect 200)
+PATCH {{baseUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "categoryIds": []
+}
+
+### 14. Assign category again (expect 200)
+PATCH {{baseUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "categoryIds": [{{categoryId}}]
+}
+
+### 15. Invalid price (expect 400)
+PATCH {{baseUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "price": -10
+}
+
+### 16. Invalid pagination (expect 400)
+GET {{baseUrl}}/api/books?page=-1&size=10
+
+### 17. Create book without JWT (expect 401)
+POST {{baseUrl}}/api/books
+Content-Type: application/json
+
+{
+  "title": "Unauthorized Book",
+  "author": "Unknown",
+  "price": 15.00,
+  "stock": 5,
+  "categoryIds": []
+}
+
+### 18. Archive book (expect 204)
+DELETE {{baseUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{adminAccessToken}}
+
+### 19. Get archived book (expect 404)
+GET {{baseUrl}}/api/books/{{bookId}}
+
+### 20. Restore archived book (expect 204)
+PUT {{baseUrl}}/api/books/{{bookId}}/restore
+Authorization: Bearer {{adminAccessToken}}
+
+### 21. Get restored book (expect 200)
+GET {{baseUrl}}/api/books/{{bookId}}
+
+### 22. Get nonexistent book (expect 404)
+GET {{baseUrl}}/api/books/99999999
