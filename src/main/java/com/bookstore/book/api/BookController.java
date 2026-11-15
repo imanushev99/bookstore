@@ -5,6 +5,9 @@ import com.bookstore.book.api.dto.CreateBookRequest;
 import com.bookstore.book.api.dto.UpdateBookRequest;
 import com.bookstore.book.application.BookService;
 import com.bookstore.common.api.PageResponse;
+import com.bookstore.common.security.SecurityUtils;
+import com.bookstore.idempotency.application.IdempotencyService;
+import com.bookstore.idempotency.application.RequestHasher;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,12 +18,16 @@ import java.net.URI;
 @RestController
 @RequestMapping("/api/books")
 public class BookController {
+
     private final BookService bookService;
+    private final IdempotencyService idempotencyService;
+    private final RequestHasher requestHasher;
 
-    public BookController(BookService bookService) {
+    public BookController(BookService bookService, IdempotencyService idempotencyService, RequestHasher requestHasher) {
         this.bookService = bookService;
+        this.idempotencyService = idempotencyService;
+        this.requestHasher = requestHasher;
     }
-
     @GetMapping
     public ResponseEntity<PageResponse<BookResponse>> getBooks(
             @RequestParam(required = false) String title,
@@ -28,9 +35,7 @@ public class BookController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(
-                bookService.getBooks(title, author, categoryId, page, size)
-        );
+        return ResponseEntity.ok(bookService.getBooks(title, author, categoryId, page, size));
     }
 
     @GetMapping("/{id}")
@@ -39,12 +44,22 @@ public class BookController {
     }
 
     @PostMapping
-    public ResponseEntity<BookResponse> createBook(@Valid @RequestBody CreateBookRequest request) {
-        BookResponse response = bookService.createBook(request);
+    public ResponseEntity<?> createBook(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody CreateBookRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+        String requestHash = requestHasher.hash("POST /api/books", request);
+
+        // the lambda expression is executed only if the idempotency key was successfully claimed
+        return idempotencyService.execute(
+                userId,
+                "CREATE_BOOK",
+                idempotencyKey,
+                requestHash,
+                () -> ResponseEntity
+                        .status(HttpStatus.CREATED)
+                        .body(bookService.createBook(request)));
     }
 
     @PatchMapping("/{id}")

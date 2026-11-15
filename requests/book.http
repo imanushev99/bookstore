@@ -1,6 +1,9 @@
 
 @baseUrl = http://localhost:8080
 @categoryId = 3
+### Idempotency test variables
+@idempotencyKey = book-create-test-001
+@isbn = 9780134685991
 
 ### 1. Login as ADMIN and save JWT
 POST {{baseUrl}}/api/auth/login
@@ -13,23 +16,128 @@ Content-Type: application/json
 
 > {% client.global.set("adminAccessToken", response.body.accessToken); %}
 
-### 2. Create a book (expect 201)
+### 2. Create a book with a new idempotency key (expect 201)
 POST {{baseUrl}}/api/books
 Authorization: Bearer {{adminAccessToken}}
 Content-Type: application/json
+Idempotency-Key: {{idempotencyKey}}
 
 {
-  "title": "Dune",
-  "author": "Frank Herbert",
-  "isbn": "9780441172719",
-  "description": "A science fiction novel",
-  "price": 19.99,
+  "title": "Effective Java",
+  "author": "Joshua Bloch",
+  "isbn": "{{isbn}}",
+  "description": "Java programming best practices",
+  "price": 39.99,
   "stock": 10,
-  "coverImageUrl": "https://example.com/covers/dune.jpg",
+  "coverImageUrl": "https://example.com/covers/effective_java.jpg",
   "categoryIds": [{{categoryId}}]
 }
 
-> {% client.global.set("bookId", response.body.id); %}
+> {%
+    client.test("Book created successfully", function() {
+        client.assert(response.status === 201);
+        client.assert(response.body.isbn === "9780134685991");
+    });
+
+    if (response.status === 201) {
+        client.global.set("idempotentBookId", response.body.id);
+    }
+%}
+
+
+### 2.1 Retry with SAME key and SAME payload - the same book should be returned (with the same ID, no new book created)
+POST http://localhost:8080/api/books
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+Idempotency-Key: {{idempotencyKey}}
+
+{
+  "title": "Effective Java",
+  "author": "Joshua Bloch",
+  "isbn": "{{isbn}}",
+  "description": "Java programming best practices",
+  "price": 39.99,
+  "stock": 10,
+  "coverImageUrl": "https://example.com/covers/effective_java.jpg",
+  "categoryIds": [{{categoryId}}]
+}
+
+> {%
+    client.test("Original response replayed", function() {
+        client.assert(response.status === 201);
+        client.assert(
+            String(response.body.id) ===
+            String(client.global.get("idempotentBookId")),
+            "Book ID should match the original response"
+        );
+    });
+%}
+### 2.2 SAME key but DIFFERENT payload: change price to 29.99 => Idempotency key was already used with a different request
+POST http://localhost:8080/api/books
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+Idempotency-Key: {{idempotencyKey}}
+
+{
+  "title": "Effective Java",
+  "author": "Joshua Bloch",
+  "isbn": "{{isbn}}",
+  "description": "Java programming best practices",
+  "price": 29.99,
+  "stock": 10,
+  "coverImageUrl": "https://example.com/covers/effective_java.jpg",
+  "categoryIds": [{{categoryId}}]
+}
+
+> {%
+    client.test("Different payload rejected", function() {
+        client.assert(response.status === 409);
+    });
+%}
+
+### 2.3 DIFFERENT key but SAME ISBN
+POST http://localhost:8080/api/books
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+Idempotency-Key: book-create-test-002
+
+{
+  "title": "Effective Java",
+  "author": "Joshua Bloch",
+  "isbn": "{{isbn}}",
+  "description": "Java programming best practices",
+  "price": 39.99,
+  "stock": 10,
+  "categoryIds": [{{categoryId}}]
+}
+
+> {%
+    client.test("Duplicate ISBN rejected", function() {
+        client.assert(response.status === 409);
+    });
+%}
+
+### 2.4 DIFFERENT key and DIFFERENT ISBN
+POST http://localhost:8080/api/books
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+Idempotency-Key: book-create-test-003
+
+{
+  "title": "Clean Code",
+  "author": "Robert C. Martin",
+  "isbn": "9780132350884",
+  "description": "A handbook of agile software craftsmanship",
+  "price": 34.99,
+  "stock": 15,
+  "categoryIds": [{{categoryId}}]
+}
+
+> {%
+    client.test("Second book created successfully", function() {
+        client.assert(response.status === 201);
+    });
+%}
 
 ### 3. Get book by ID (expect 200)
 GET {{baseUrl}}/api/books/{{bookId}}
