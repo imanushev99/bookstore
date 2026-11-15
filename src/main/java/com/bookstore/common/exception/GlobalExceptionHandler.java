@@ -1,6 +1,7 @@
 package com.bookstore.common.exception;
 
 import com.bookstore.auth.application.exception.EmailAlreadyExistsException;
+import com.bookstore.book.application.exception.BookAlreadyExistsException;
 import com.bookstore.category.application.exception.CategoryAlreadyExistsException;
 import com.bookstore.category.application.exception.CategoryInUseException;
 import org.springframework.dao.CannotAcquireLockException;
@@ -89,4 +90,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", exception.getMessage()));
     }
+
+
+    @ExceptionHandler(BookAlreadyExistsException.class)
+    public ResponseEntity<Map<String, String>> handleBookAlreadyExists(BookAlreadyExistsException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", exception.getMessage()));
+    }
+
 }

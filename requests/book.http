@@ -21,6 +21,7 @@ Content-Type: application/json
 {
   "title": "Dune",
   "author": "Frank Herbert",
+  "isbn": "9780441172719",
   "description": "A science fiction novel",
   "price": 19.99,
   "stock": 10,

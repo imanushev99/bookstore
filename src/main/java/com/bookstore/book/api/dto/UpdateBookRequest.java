@@ -19,6 +19,9 @@ public class UpdateBookRequest {
     @Pattern(regexp = "(?s).*\\S.*", message = "Author cannot be blank")
     private String author;
 
+    @Pattern(regexp = "[0-9]{13}", message = "ISBN must contain exactly 13 digits")
+    private String isbn;
+
     private String description;
 
     @DecimalMin(value = "0.01", message = "Price must be greater than zero")
@@ -35,12 +38,14 @@ public class UpdateBookRequest {
     public UpdateBookRequest(
             String title,
             String author,
+            String isbn,
             String description,
             BigDecimal price,
             String coverImageUrl,
             List<Long> categoryIds) {
         this.title = title;
         this.author = author;
+        this.isbn = isbn;
         this.description = description;
         this.price = price;
         this.coverImageUrl = coverImageUrl;
@@ -61,6 +66,14 @@ public class UpdateBookRequest {
 
     public void setAuthor(String author) {
         this.author = author;
+    }
+
+    public String getIsbn() {
+        return isbn;
+    }
+
+    public void setIsbn(String isbn) {
+        this.isbn = isbn;
     }
 
     public String getDescription() {

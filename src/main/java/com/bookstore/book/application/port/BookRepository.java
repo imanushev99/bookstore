@@ -17,22 +17,22 @@ public interface BookRepository {
             int limit,
             long offset);
 
-    long count(
-            String title,
-            String author,
-            Long categoryId);
+    long count(String title, String author, Long categoryId);
 
     Optional<Book> findById(Long id);
 
     Optional<Book> findByIdForUpdate(Long id);
 
+    // Retrieve an archived book and lock its row
+    // ordinary retrieve is filtering them out
+    Optional<Book> findArchivedByIdForUpdate(Long id);
+
+    boolean existsByIsbn(String isbn);
+
     Book save(Book book);
 
     void updateMetadata(Book book);
 
-    // Retrieve an archived book and lock its row
-    // ordinary retrieve is filtering them out
-    Optional<Book> findArchivedByIdForUpdate(Long id);
 
     void archiveById(Long id);
 

@@ -8,6 +8,7 @@ public class Book {
     private final Long id;
     private final String title;
     private final String author;
+    private final String isbn;
     private final String description;
     private final BigDecimal price;
     private final int stock;
@@ -20,6 +21,7 @@ public class Book {
             Long id,
             String title,
             String author,
+            String isbn,
             String description,
             BigDecimal price,
             int stock,
@@ -30,6 +32,7 @@ public class Book {
         this.id = id;
         this.title = title;
         this.author = author;
+        this.isbn = isbn;
         this.description = description;
         this.price = price;
         this.stock = stock;
@@ -49,6 +52,10 @@ public class Book {
 
     public String getAuthor() {
         return author;
+    }
+
+    public String getIsbn() {
+        return isbn;
     }
 
     public String getDescription() {

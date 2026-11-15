@@ -3,12 +3,14 @@ package com.bookstore.book.application;
 import com.bookstore.book.api.dto.BookResponse;
 import com.bookstore.book.api.dto.CreateBookRequest;
 import com.bookstore.book.api.dto.UpdateBookRequest;
+import com.bookstore.book.application.exception.BookAlreadyExistsException;
 import com.bookstore.book.application.port.BookRepository;
 import com.bookstore.book.domain.Book;
 import com.bookstore.category.api.dto.CategoryResponse;
 import com.bookstore.category.application.port.CategoryRepository;
 import com.bookstore.category.domain.Category;
 import com.bookstore.common.api.PageResponse;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,12 +70,19 @@ public class BookService {
 
     @Transactional
     public BookResponse createBook(CreateBookRequest request) {
+        String isbn = request.getIsbn();
+
+        if (bookRepository.existsByIsbn(isbn)) {
+            throw new BookAlreadyExistsException("A book with ISBN " + isbn + " already exists");
+        }
+
         validateCategoryIds(request.getCategoryIds());
 
         Book book = new Book(
                 null,
                 request.getTitle().trim(),
                 request.getAuthor().trim(),
+                isbn,
                 request.getDescription(),
                 request.getPrice(),
                 request.getStock(),
@@ -82,7 +91,13 @@ public class BookService {
                 null,
                 null);
 
-        Book savedBook = bookRepository.save(book);
+        Book savedBook;
+
+        try {
+            savedBook = bookRepository.save(book);
+        } catch (DuplicateKeyException exception) {
+            throw new BookAlreadyExistsException("A book with ISBN " + isbn + " already exists", exception);
+        }
 
         bookRepository.replaceCategories(savedBook.getId(), request.getCategoryIds());
 
@@ -104,6 +119,10 @@ public class BookService {
                 ? request.getAuthor().trim()
                 : existing.getAuthor();
 
+        String isbn = request.getIsbn() != null
+                ? request.getIsbn().trim()
+                : existing.getIsbn();
+
         String description = request.getDescription() != null
                 ? request.getDescription()
                 : existing.getDescription();
@@ -120,6 +139,7 @@ public class BookService {
                 id,
                 title,
                 author,
+                isbn,
                 description,
                 price,
                 existing.getStock(),
@@ -128,8 +148,15 @@ public class BookService {
                 existing.getUpdatedAt(),
                 existing.getArchivedAt());
 
+        boolean isbnChanged = !existing.getIsbn().equals(isbn);
+
+        if (isbnChanged && bookRepository.existsByIsbn(isbn)) {
+            throw new BookAlreadyExistsException("A book with ISBN " + isbn + " already exists");
+        }
+
         boolean metadataChanged = !Objects.equals(existing.getTitle(), title)
                                     || !Objects.equals(existing.getAuthor(), author)
+                                    || isbnChanged
                                     || !Objects.equals(existing.getDescription(), description)
                                     || existing.getPrice().compareTo(price) != 0
                                     || !Objects.equals(existing.getCoverImageUrl(), coverImageUrl);
@@ -152,7 +179,12 @@ public class BookService {
         }
 
         if (!metadataChanged && !categoriesChanged) {
-            return toResponse(existing, existingCategories);
+            try {
+                bookRepository.updateMetadata(updated);
+            } catch (DuplicateKeyException exception) {
+                // someone may have created a book with that isbn during this time because the table is not locked
+                throw new BookAlreadyExistsException("A book with ISBN " + isbn + " already exists", exception);
+            }
         }
 
         // check both because if only categoriesChanged == true, metadata still includes updated_at which needs to be updated
@@ -228,6 +260,7 @@ public class BookService {
                 book.getId(),
                 book.getTitle(),
                 book.getAuthor(),
+                book.getIsbn(),
                 book.getDescription(),
                 book.getPrice(),
                 book.getStock(),

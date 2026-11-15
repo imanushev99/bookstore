@@ -120,6 +120,24 @@ public class JdbcBookRepository implements BookRepository {
                 .findFirst();
     }
 
+    @Override
+    public boolean existsByIsbn(String isbn) {
+        String sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM books
+                WHERE isbn = :isbn
+            )
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("isbn", isbn);
+
+        Boolean exists = jdbc.queryForObject(sql, params, Boolean.class);
+
+        return Boolean.TRUE.equals(exists);
+    }
+
     // ---------------- BOOK MODIFICATIONS ----------------
 
     @Override
@@ -128,6 +146,7 @@ public class JdbcBookRepository implements BookRepository {
                 INSERT INTO books (
                     title,
                     author,
+                    isbn,
                     description,
                     price,
                     stock,
@@ -136,6 +155,7 @@ public class JdbcBookRepository implements BookRepository {
                 VALUES (
                     :title,
                     :author,
+                    :isbn,
                     :description,
                     :price,
                     :stock,
@@ -147,6 +167,7 @@ public class JdbcBookRepository implements BookRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("title", book.getTitle())
                 .addValue("author", book.getAuthor())
+                .addValue("isbn", book.getIsbn())
                 .addValue("description", book.getDescription())
                 .addValue("price", book.getPrice())
                 .addValue("stock", book.getStock())
@@ -161,6 +182,7 @@ public class JdbcBookRepository implements BookRepository {
                 UPDATE books
                 SET title = :title,
                     author = :author,
+                    isbn = :isbn,
                     description = :description,
                     price = :price,
                     cover_image_url = :coverImageUrl,
@@ -173,6 +195,7 @@ public class JdbcBookRepository implements BookRepository {
                 .addValue("id", book.getId())
                 .addValue("title", book.getTitle())
                 .addValue("author", book.getAuthor())
+                .addValue("isbn", book.getIsbn())
                 .addValue("description", book.getDescription())
                 .addValue("price", book.getPrice())
                 .addValue("coverImageUrl", book.getCoverImageUrl());
@@ -180,9 +203,7 @@ public class JdbcBookRepository implements BookRepository {
         int updatedRows = jdbc.update(sql, params);
 
         if (updatedRows != 1) {
-            throw new IllegalStateException(
-                    "Expected to update exactly one book"
-            );
+            throw new IllegalStateException("Expected to update exactly one book");
         }
     }
 
@@ -202,9 +223,7 @@ public class JdbcBookRepository implements BookRepository {
         int updatedRows = jdbc.update(sql, params);
 
         if (updatedRows != 1) {
-            throw new IllegalStateException(
-                    "Expected to archive exactly one book"
-            );
+            throw new IllegalStateException("Expected to archive exactly one book");
         }
     }
 
@@ -224,18 +243,14 @@ public class JdbcBookRepository implements BookRepository {
         int updatedRows = jdbc.update(sql, params);
 
         if (updatedRows != 1) {
-            throw new IllegalStateException(
-                    "Expected to restore exactly one book"
-            );
+            throw new IllegalStateException("Expected to restore exactly one book");
         }
     }
 
     // ---------------- BOOK CATEGORIES ----------------
 
     @Override
-    public Map<Long, List<Category>> findCategoriesByBookIds(
-            List<Long> bookIds
-    ) {
+    public Map<Long, List<Category>> findCategoriesByBookIds(List<Long> bookIds) {
         if (bookIds.isEmpty()) {
             return Map.of();
         }
@@ -351,6 +366,7 @@ public class JdbcBookRepository implements BookRepository {
                 rs.getLong("id"),
                 rs.getString("title"),
                 rs.getString("author"),
+                rs.getString("isbn"),
                 rs.getString("description"),
                 rs.getBigDecimal("price"),
                 rs.getInt("stock"),
