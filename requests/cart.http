@@ -1,0 +1,89 @@
+
+### Configuration
+@baseUrl = http://localhost:8080
+@bookId = 2
+
+### 0. Login as ADMIN and save JWT
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Password123"
+}
+
+> {% client.global.set("userAccessToken", response.body.accessToken); %}
+
+### 1. Get current cart
+GET {{baseUrl}}/api/cart
+Authorization: Bearer {{userAccessToken}}
+
+
+### 2. Add one copy of a book
+POST {{baseUrl}}/api/cart/items/{{bookId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### 3. Add another copy of the same book
+POST {{baseUrl}}/api/cart/items/{{bookId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### 4. Get cart after adding books
+GET {{baseUrl}}/api/cart
+Authorization: Bearer {{userAccessToken}}
+
+
+### 5. Remove one copy
+DELETE {{baseUrl}}/api/cart/items/{{bookId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### 6. Remove the remaining copy
+DELETE {{baseUrl}}/api/cart/items/{{bookId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### 7. Remove a book that is not in the cart
+DELETE {{baseUrl}}/api/cart/items/{{bookId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### 8. Get empty cart
+GET {{baseUrl}}/api/cart
+Authorization: Bearer {{userAccessToken}}
+
+
+### 9. Try adding a nonexistent book
+POST {{baseUrl}}/api/cart/items/999999
+Authorization: Bearer {{userAccessToken}}
+
+
+### 10. Try accessing cart without authentication
+GET {{baseUrl}}/api/cart
+
+
+### 11. Add book for archive scenario
+POST {{baseUrl}}/api/cart/items/{{bookId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### 12. Archive book (ADMIN)
+DELETE {{baseUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{adminAccessToken}}
+
+
+### 13. Get cart after archiving
+# Archived book should be removed automatically
+GET {{baseUrl}}/api/cart
+Authorization: Bearer {{userAccessToken}}
+
+
+### 14. Try adding archived book
+POST {{baseUrl}}/api/cart/items/{{bookId}}
+Authorization: Bearer {{userAccessToken}}
+
+
+### 15. Restore book (ADMIN)
+PUT {{baseUrl}}/api/books/{{bookId}}/restore
+Authorization: Bearer {{adminAccessToken}}
