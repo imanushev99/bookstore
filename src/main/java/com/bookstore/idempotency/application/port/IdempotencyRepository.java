@@ -24,4 +24,8 @@ public interface IdempotencyRepository {
             Long id,
             int responseStatus,
             String responseBody);
+
+    // After an idempotency record expires and is deleted, its key can be reused.
+    // This means the 24-hour idempotency guarantee applies only within that retention window
+    int deleteExpired(int batchSize);
 }

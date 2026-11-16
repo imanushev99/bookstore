@@ -101,6 +101,37 @@ public class JdbcIdempotencyRepository implements IdempotencyRepository {
         }
     }
 
+
+    // Without SKIP LOCKED, if two instances of the Bookstore app execute cleanup simultaneously,
+    // it might attempt to lock the same expired records, causing one cleanup transaction to wait.
+    // Also, an expired key can still replay its old response until the cleanup actually deletes it.
+    @Override
+    public int deleteExpired(int batchSize) {
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("Batch size must be positive");
+        }
+
+        String sql = """
+            WITH expired AS (
+                SELECT id
+                FROM idempotency_requests
+                WHERE expires_at <= CURRENT_TIMESTAMP
+                ORDER BY expires_at, id
+                LIMIT :batchSize
+                FOR UPDATE SKIP LOCKED
+            )
+            DELETE FROM idempotency_requests ir
+            USING expired
+            WHERE ir.id = expired.id
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("batchSize", batchSize);
+
+        return jdbc.update(sql, params);
+    }
+
+
     private IdempotencyRequest mapRequest(ResultSet rs, int rowNum) throws SQLException {
         Integer responseStatus =
                 rs.getObject("response_status") == null

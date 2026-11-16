@@ -86,6 +86,7 @@ public class IdempotencyService {
         return replay(existing);
     }
 
+    // An expired key can still replay its old response until the cleanup actually deletes it.
     private ResponseEntity<?> replay(IdempotencyRequest request) {
         int status = request.getResponseStatus();
         String body = request.getResponseBody();
