@@ -40,6 +40,19 @@ public class OrderService {
         this.bookRepository = bookRepository;
     }
 
+    /**
+     * BEGIN TRANSACTION
+     *
+     * 1. Lock cart
+     * 2. Create order (PENDING)
+     * 3. Create order items
+     * 4. Insert ORDER_SUBMITTED into outbox_events
+     * 5. Clear cart
+     *
+     * COMMIT
+     * @param userId
+     * @return
+     */
     @Transactional
     public OrderResponse submitOrder(Long userId) {
 
