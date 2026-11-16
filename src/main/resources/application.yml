@@ -1,3 +1,4 @@
+
 spring:
   application:
     name: bookstore
@@ -13,7 +14,7 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
-  # Kafka
+  # Kafka configuration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -23,15 +24,15 @@ spring:
       properties:
         "[enable.idempotence]": true
 
-# Failed sends are scheduled with exponential backoff = 5 minutes
-  outbox:
-    poll-delay-ms: 5000
-
-# Topics
 bookstore:
   kafka:
-    order-submitted: bookstore.orders.submitted
-    inventory-restocked: bookstore.inventory.restocked
+    topics:
+      order-submitted: bookstore.orders.submitted
+      inventory-restocked: bookstore.inventory.restocked
+
+# polling every 5 seconds after the previous execution finishes
+  outbox:
+    poll-delay-ms: 5000
 
 # Embedded web server
 server:
