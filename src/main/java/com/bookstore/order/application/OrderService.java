@@ -9,13 +9,16 @@ import com.bookstore.cart.domain.CartItem;
 import com.bookstore.common.api.PageResponse;
 import com.bookstore.order.api.dto.OrderItemResponse;
 import com.bookstore.order.api.dto.OrderResponse;
+import com.bookstore.order.application.event.OrderSubmittedEvent;
 import com.bookstore.order.application.port.OrderRepository;
 import com.bookstore.order.domain.Order;
 import com.bookstore.order.domain.OrderItem;
 import com.bookstore.order.domain.OrderStatus;
-
+import com.bookstore.outbox.application.port.OutboxRepository;
+import com.bookstore.outbox.domain.OutboxEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -29,15 +32,20 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
     private final BookRepository bookRepository;
+    private final OutboxRepository outboxRepository;
+    private final JsonMapper jsonMapper;
 
     public OrderService(
             OrderRepository orderRepository,
             CartRepository cartRepository,
-            BookRepository bookRepository
-    ) {
+            BookRepository bookRepository,
+            OutboxRepository outboxRepository,
+            JsonMapper jsonMapper) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.bookRepository = bookRepository;
+        this.outboxRepository = outboxRepository;
+        this.jsonMapper = jsonMapper;
     }
 
     /**
@@ -106,14 +114,28 @@ public class OrderService {
                 OrderStatus.PENDING,
                 totalAmount,
                 null,
-                null
-        );
+                null);
 
         Order savedOrder = orderRepository.save(order);
 
         // Persist the items with their purchase prices.
-        orderRepository.saveItems(savedOrder.getId(), orderItems
-        );
+        orderRepository.saveItems(savedOrder.getId(), orderItems);
+
+        // Create event payload.
+        OrderSubmittedEvent event = new OrderSubmittedEvent(savedOrder.getId());
+
+        String payload = jsonMapper.writeValueAsString(event);
+
+        // Persist event in the same transaction.
+        // In this case aggregateId = payload.orderId
+        // aggregate_id identifies the entity associated with the event.
+        // We can use it for querying, grouping, and choosing the Kafka message key to preserve ordering for that entity.
+        // payload contains the actual event data that the Kafka consumer needs to process.
+        outboxRepository.save(OutboxEvent.pending(
+                        "ORDER",
+                        savedOrder.getId(),
+                        "ORDER_SUBMITTED",
+                        payload));
 
         // Clear items, but keep the cart.
         cartRepository.clearItems(cart.getId());
