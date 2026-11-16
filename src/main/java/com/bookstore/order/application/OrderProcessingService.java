@@ -2,6 +2,7 @@ package com.bookstore.order.application;
 
 import com.bookstore.book.application.port.BookRepository;
 import com.bookstore.book.domain.Book;
+import com.bookstore.inventory.application.InventoryAllocationService;
 import com.bookstore.messaging.application.port.ProcessedEventRepository;
 import com.bookstore.order.application.port.OrderRepository;
 import com.bookstore.order.domain.Order;
@@ -23,18 +24,24 @@ public class OrderProcessingService {
     private static final String CONSUMER_NAME = "ORDER_PROCESSOR";
 
     private final OrderRepository orderRepository;
-    private final BookRepository bookRepository;
+    private final InventoryAllocationService inventoryAllocationService;
     private final ProcessedEventRepository processedEventRepository;
 
     public OrderProcessingService(
             OrderRepository orderRepository,
-            BookRepository bookRepository,
+            InventoryAllocationService inventoryAllocationService,
             ProcessedEventRepository processedEventRepository) {
         this.orderRepository = orderRepository;
-        this.bookRepository = bookRepository;
+        this.inventoryAllocationService = inventoryAllocationService;
         this.processedEventRepository = processedEventRepository;
     }
 
+    // BEGIN
+    //  1. Mark Kafka event as processed
+    //  2. Find order and its items
+    //  3. Lock book rows and allocate inventory
+    //  4. Update affected order items and statuses
+    // COMMIT
     @Transactional
     public void processOrder(UUID eventId, Long orderId) {
         // Prevent processing the same Kafka event twice (deduplication)
@@ -67,85 +74,7 @@ public class OrderProcessingService {
         affectedOrderIds.add(orderId);
 
         for (Long bookId : bookIds) {
-
-            // Exclusive lock, including archived books that
-            // may still belong to previously submitted orders.
-            // Archived books are removed only from carts, not from orders.
-            Book book = bookRepository
-                    .findByIdForInventoryUpdate(bookId)
-                    .orElseThrow(() -> new NoSuchElementException("Book not found: " + bookId));
-
-            int availableStock = book.getStock();
-
-            // No stock: classify our order item as backordered.
-            // No need to scan every older backorder.
-            if (availableStock == 0) {
-                OrderItem item = items.stream()
-                        .filter(i -> i.getBookId().equals(bookId))
-                        .findFirst()
-                        .orElseThrow();
-
-                int remaining = item.getQuantity() - item.getAllocatedQuantity();
-
-                if (item.getBackorderedQuantity() != remaining) {
-                    orderRepository.updateItemAllocation(item.getId(), item.getAllocatedQuantity(), remaining);
-                }
-
-                continue;
-            }
-
-            // Must include older PENDING orders as well as previously BACKORDERED orders.
-            List<OrderItem> outstanding = orderRepository.findOutstandingItemsByBookId(bookId);
-
-            for (OrderItem item : outstanding) {
-
-                int remaining = item.getQuantity() - item.getAllocatedQuantity();
-
-                int allocatedNow = Math.min(availableStock, remaining);
-
-                int newAllocated = item.getAllocatedQuantity() + allocatedNow;
-
-                int newBackordered = item.getQuantity() - newAllocated;
-
-                if (allocatedNow > 0 || newBackordered != item.getBackorderedQuantity()) {
-
-                    orderRepository.updateItemAllocation(item.getId(), newAllocated, newBackordered);
-
-                    affectedOrderIds.add(item.getOrderId());
-                }
-
-                availableStock -= allocatedNow;
-
-                if (availableStock == 0) {
-                    break;
-                }
-            }
-
-            int allocatedStock = book.getStock() - availableStock;
-
-            if (allocatedStock > 0) {
-                bookRepository.decreaseStock(bookId, allocatedStock);
-            }
-
-            // Ensure this order's item is classified even if
-            // older demand consumed all available stock.
-            OrderItem currentItem = orderRepository
-                    .findItemsByOrderId(orderId)
-                    .stream()
-                    .filter(i -> i.getBookId().equals(bookId))
-                    .findFirst()
-                    .orElseThrow();
-
-            int remaining = currentItem.getQuantity() - currentItem.getAllocatedQuantity();
-
-            if (currentItem.getBackorderedQuantity() != remaining) {
-                orderRepository.updateItemAllocation(currentItem.getId(), currentItem.getAllocatedQuantity(), remaining);
-            }
+            inventoryAllocationService.allocateOutstandingForBook(bookId);
         }
-
-        // Recalculate statuses for all affected orders.
-        affectedOrderIds.stream()
-                .sorted()
-                .forEach(orderRepository::refreshAllocationStatus);
     }
 }

@@ -26,6 +26,8 @@ public class InventoryAllocationService {
         this.orderRepository = orderRepository;
     }
 
+    // Propagation.MANDATORY means that it requires the caller method to have an active transaction
+    // (for example when called from processOrder, or restockBook)
     @Transactional(propagation = Propagation.MANDATORY)
     public void allocateOutstandingForBook(Long bookId) {
 
