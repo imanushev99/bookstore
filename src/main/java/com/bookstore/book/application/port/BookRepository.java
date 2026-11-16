@@ -23,6 +23,9 @@ public interface BookRepository {
 
     Optional<Book> findByIdForUpdate(Long id);
 
+    // prevents an admin from archiving a book while its checkout is in progress; used in OrderService
+    Optional<Book> findByIdForShare(Long id);
+
     // Retrieve an archived book and lock its row
     // ordinary retrieve is filtering them out
     Optional<Book> findArchivedByIdForUpdate(Long id);

@@ -1,6 +1,7 @@
 package com.bookstore.idempotency.infrastructure;
 
 import com.bookstore.idempotency.application.port.IdempotencyRepository;
+import com.bookstore.idempotency.domain.IdempotencyOperation;
 import com.bookstore.idempotency.domain.IdempotencyRequest;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -22,7 +23,7 @@ public class JdbcIdempotencyRepository implements IdempotencyRepository {
     }
 
     @Override
-    public Optional<IdempotencyRequest> findByKey(Long userId, String operation, String idempotencyKey) {
+    public Optional<IdempotencyRequest> findByKey(Long userId, IdempotencyOperation operation, String idempotencyKey) {
         String sql = """
                 SELECT *
                 FROM idempotency_requests
@@ -33,7 +34,7 @@ public class JdbcIdempotencyRepository implements IdempotencyRepository {
 
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("userId", userId)
-                .addValue("operation", operation)
+                .addValue("operation", operation.name())
                 .addValue("idempotencyKey", idempotencyKey);
 
         List<IdempotencyRequest> requests = jdbc.query(sql, params, this::mapRequest);
@@ -42,7 +43,7 @@ public class JdbcIdempotencyRepository implements IdempotencyRepository {
     }
 
     @Override
-    public Optional<IdempotencyRequest> tryClaim(Long userId, String operation, String idempotencyKey, String requestHash, OffsetDateTime expiresAt) {
+    public Optional<IdempotencyRequest> tryClaim(Long userId, IdempotencyOperation operation, String idempotencyKey, String requestHash, OffsetDateTime expiresAt) {
         // DO NOTHING is the key for the UNIQUE CONSTRAINT
         // If the first transaction is still uncommitted, the competing insert can wait for its outcome.
         // - If Request A rolls back, Request B can instead acquire the claim and execute the operation.
@@ -69,7 +70,7 @@ public class JdbcIdempotencyRepository implements IdempotencyRepository {
 
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("userId", userId)
-                .addValue("operation", operation)
+                .addValue("operation", operation.name())
                 .addValue("idempotencyKey", idempotencyKey)
                 .addValue("requestHash", requestHash)
                 .addValue("expiresAt", expiresAt);
@@ -141,7 +142,7 @@ public class JdbcIdempotencyRepository implements IdempotencyRepository {
         return new IdempotencyRequest(
                 rs.getLong("id"),
                 rs.getLong("user_id"),
-                rs.getString("operation"),
+                IdempotencyOperation.valueOf(rs.getString("operation")),
                 rs.getString("idempotency_key"),
                 rs.getString("request_hash"),
                 responseStatus,

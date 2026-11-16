@@ -102,6 +102,27 @@ public class JdbcBookRepository implements BookRepository {
                 .findFirst();
     }
 
+
+    // FOR SHARE allows reads only
+    @Override
+    public Optional<Book> findByIdForShare(Long id) {
+        String sql = """
+            SELECT *
+            FROM books
+            WHERE id = :id
+              AND archived_at IS NULL
+            FOR SHARE
+            """;
+
+        MapSqlParameterSource params =
+                new MapSqlParameterSource("id", id);
+
+        return jdbc.query(sql, params, this::mapBook)
+                .stream()
+                .findFirst();
+    }
+
+
     @Override
     public Optional<Book> findArchivedByIdForUpdate(Long id) {
         String sql = """

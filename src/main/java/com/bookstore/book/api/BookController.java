@@ -8,6 +8,7 @@ import com.bookstore.common.api.PageResponse;
 import com.bookstore.common.security.SecurityUtils;
 import com.bookstore.idempotency.application.IdempotencyService;
 import com.bookstore.idempotency.application.RequestHasher;
+import com.bookstore.idempotency.domain.IdempotencyOperation;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -54,7 +55,7 @@ public class BookController {
         // the lambda expression is executed only if the idempotency key was successfully claimed
         return idempotencyService.execute(
                 userId,
-                "CREATE_BOOK",
+                IdempotencyOperation.CREATE_BOOK,
                 idempotencyKey,
                 requestHash,
                 () -> ResponseEntity

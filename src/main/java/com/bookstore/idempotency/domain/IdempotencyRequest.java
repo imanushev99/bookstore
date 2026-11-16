@@ -17,7 +17,7 @@ import java.time.OffsetDateTime;
 public class IdempotencyRequest {
     private final Long id;
     private final Long userId;
-    private final String operation;
+    private final IdempotencyOperation operation;
     private final String idempotencyKey;
     private final String requestHash;
     private final Integer responseStatus;
@@ -28,7 +28,7 @@ public class IdempotencyRequest {
     public IdempotencyRequest(
             Long id,
             Long userId,
-            String operation,
+            IdempotencyOperation operation,
             String idempotencyKey,
             String requestHash,
             Integer responseStatus,
@@ -54,7 +54,7 @@ public class IdempotencyRequest {
         return userId;
     }
 
-    public String getOperation() {
+    public IdempotencyOperation getOperation() {
         return operation;
     }
 

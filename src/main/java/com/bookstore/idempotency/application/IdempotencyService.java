@@ -3,6 +3,7 @@ package com.bookstore.idempotency.application;
 import com.bookstore.idempotency.application.exception.IdempotencyKeyConflictException;
 import com.bookstore.idempotency.application.exception.IdempotencyRequestInProgressException;
 import com.bookstore.idempotency.application.port.IdempotencyRepository;
+import com.bookstore.idempotency.domain.IdempotencyOperation;
 import com.bookstore.idempotency.domain.IdempotencyRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ public class IdempotencyService {
     @Transactional
     public ResponseEntity<?> execute(
             Long userId,
-            String operation,
+            IdempotencyOperation operation,
             String idempotencyKey,
             String requestHash,
             Supplier<ResponseEntity<?>> action) {
@@ -100,14 +101,12 @@ public class IdempotencyService {
                 .body(jsonMapper.readTree(body));
     }
 
-    private void validate(Long userId, String operation, String idempotencyKey, String requestHash) {
+    private void validate(Long userId, IdempotencyOperation operation, String idempotencyKey, String requestHash) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Valid user ID is required");
         }
 
-        if (operation == null || operation.isBlank()) {
-            throw new IllegalArgumentException("Operation is required");
-        }
+        Objects.requireNonNull(operation, "Operation is required");
 
         if (idempotencyKey == null
                 || idempotencyKey.isBlank()
