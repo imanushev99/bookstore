@@ -14,7 +14,6 @@ import java.util.*;
 @Repository
 public class JdbcBookRepository implements BookRepository {
 
-
     private final NamedParameterJdbcTemplate jdbc;
 
     public JdbcBookRepository(NamedParameterJdbcTemplate jdbc) {
@@ -358,6 +357,81 @@ public class JdbcBookRepository implements BookRepository {
 
         jdbc.batchUpdate(insertSql, batch);
     }
+
+    // use FOR UPDATE instead of FOR UPDATE NOWAIT,
+    // allowing concurrent Kafka consumers to wait for the book lock rather than immediately fail.
+    // also, include archived books because previously accepted orders may still require inventory allocation
+    @Override
+    public Optional<Book> findByIdForInventoryUpdate(Long bookId) {
+        String sql = """
+            SELECT *
+            FROM books
+            WHERE id = :bookId
+            FOR UPDATE
+            """;
+
+        MapSqlParameterSource params =
+                new MapSqlParameterSource("bookId", bookId);
+
+        return jdbc.query(sql, params, this::mapBook)
+                .stream()
+                .findFirst();
+    }
+
+
+    @Override
+    public void decreaseStock(Long bookId, int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+
+        String sql = """
+            UPDATE books
+            SET stock = stock - :quantity,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :bookId
+              AND stock >= :quantity
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("bookId", bookId)
+                .addValue("quantity", quantity);
+
+        int updatedRows = jdbc.update(sql, params);
+
+        if (updatedRows != 1) {
+            throw new IllegalStateException("Insufficient stock or book not found: " + bookId);
+        }
+    }
+
+
+    @Override
+    public void increaseStock(Long bookId, int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Restock quantity must be positive");
+        }
+
+        String sql = """
+            UPDATE books
+            SET stock = stock + :quantity,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :bookId
+              AND archived_at IS NULL
+              AND stock <= 2147483647 - :quantity
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("bookId", bookId)
+                .addValue("quantity", quantity);
+
+        int updatedRows = jdbc.update(sql, params);
+
+        if (updatedRows != 1) {
+            throw new IllegalStateException("Unable to restock book: " + bookId);
+        }
+    }
+
+
 
     // ---------------- HELPERS ----------------
 

@@ -39,7 +39,6 @@ public interface BookRepository {
 
     void updateMetadata(Book book);
 
-
     void archiveById(Long id);
 
     // Restore an archived book
@@ -50,4 +49,12 @@ public interface BookRepository {
 
     // used in updating book categories
     void replaceCategories(Long bookId, List<Long> categoryIds);
+
+    // used in OrderProcessingService
+
+    Optional<Book> findByIdForInventoryUpdate(Long bookId);
+
+    void decreaseStock(Long bookId, int quantity);
+
+    void increaseStock(Long bookId, int quantity);
 }

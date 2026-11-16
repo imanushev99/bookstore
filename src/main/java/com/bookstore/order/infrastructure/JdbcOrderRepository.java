@@ -235,6 +235,108 @@ public class JdbcOrderRepository implements OrderRepository {
         }
     }
 
+    // includes:
+    //   Orders awaiting initial processing (PENDING).
+    //   Orders currently being processed (PROCESSING).
+    //   Orders still waiting for inventory (BACKORDERED)
+    // excludes:
+    //   completed or cancelled orders
+    // Orders are handled chronologically, not based on which Kafka event is consumed first
+    @Override
+    public List<OrderItem> findOutstandingItemsByBookId(Long bookId) {
+        String sql = """
+            SELECT oi.*
+            FROM order_items oi
+            JOIN orders o ON o.id = oi.order_id
+            WHERE oi.book_id = :bookId
+              AND oi.allocated_quantity < oi.quantity
+              AND o.status IN (
+                  'PENDING',
+                  'PROCESSING',
+                  'BACKORDERED')
+            ORDER BY o.created_at ASC,
+                     o.id ASC,
+                     oi.id ASC
+            """;
+
+        MapSqlParameterSource params =
+                new MapSqlParameterSource("bookId", bookId);
+
+        return jdbc.query(sql, params, this::mapOrderItem);
+    }
+
+
+
+    @Override
+    public void updateItemAllocation(Long orderItemId, int allocatedQuantity, int backorderedQuantity) {
+        if (allocatedQuantity < 0 || backorderedQuantity < 0) {
+            throw new IllegalArgumentException("Allocation quantities cannot be negative");
+        }
+
+        String sql = """
+            UPDATE order_items
+            SET allocated_quantity = :allocatedQuantity,
+                backordered_quantity = :backorderedQuantity
+            WHERE id = :orderItemId
+              AND :allocatedQuantity + :backorderedQuantity <= quantity
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("orderItemId", orderItemId)
+                .addValue("allocatedQuantity", allocatedQuantity)
+                .addValue("backorderedQuantity", backorderedQuantity);
+
+        int updatedRows = jdbc.update(sql, params);
+
+        if (updatedRows != 1) {
+            throw new IllegalStateException("Order item not found or invalid allocation: " + orderItemId);
+        }
+    }
+
+    // recalculates the order status based on its items
+    @Override
+    public void refreshAllocationStatus(Long orderId) {
+        String sql = """
+            UPDATE orders o
+            SET status = CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM order_items oi
+                        WHERE oi.order_id = o.id
+                          AND (oi.allocated_quantity + oi.backordered_quantity) < oi.quantity
+                    )
+                    THEN 'PENDING'
+
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM order_items oi
+                        WHERE oi.order_id = o.id AND oi.backordered_quantity > 0
+                    )
+                    THEN 'BACKORDERED'
+
+                    ELSE 'CONFIRMED'
+                END,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE o.id = :orderId
+              AND o.status IN (
+                  'PENDING',
+                  'PROCESSING',
+                  'BACKORDERED'
+              )
+              AND EXISTS (
+                  SELECT 1
+                  FROM order_items oi
+                  WHERE oi.order_id = o.id
+              )
+            """;
+
+        MapSqlParameterSource params =
+                new MapSqlParameterSource("orderId", orderId);
+
+        jdbc.update(sql, params);
+    }
+
+
     private Order mapOrder(ResultSet rs, int rowNum) throws SQLException {
         return new Order(
                 rs.getLong("id"),
