@@ -27,6 +27,9 @@ public interface BookRepository {
     // ordinary retrieve is filtering them out
     Optional<Book> findArchivedByIdForUpdate(Long id);
 
+    // user in cart service when a book that is in someone's cart is archived
+    Optional<Book> findArchivedById(Long id);
+
     boolean existsByIsbn(String isbn);
 
     Book save(Book book);

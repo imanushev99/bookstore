@@ -194,6 +194,29 @@ public class JdbcCartRepository implements CartRepository {
         }
     }
 
+
+    @Override
+    public boolean deleteItem(Long cartId, Long bookId) {
+        String sql = """
+            DELETE FROM cart_items
+            WHERE cart_id = :cartId
+              AND book_id = :bookId
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("cartId", cartId)
+                .addValue("bookId", bookId);
+
+        int deletedRows = jdbc.update(sql, params);
+
+        if (deletedRows > 0) {
+            touchCart(cartId);
+        }
+
+        return deletedRows > 0;
+    }
+
+
     private void touchCart(Long cartId) {
         String sql = """
                 UPDATE carts

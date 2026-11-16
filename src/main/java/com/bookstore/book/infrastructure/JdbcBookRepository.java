@@ -121,6 +121,23 @@ public class JdbcBookRepository implements BookRepository {
     }
 
     @Override
+    public Optional<Book> findArchivedById(Long id) {
+        String sql = """
+            SELECT *
+            FROM books
+            WHERE id = :id
+              AND archived_at IS NOT NULL
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("id", id);
+
+        List<Book> books = jdbc.query(sql, params, this::mapBook);
+
+        return books.stream().findFirst();
+    }
+
+    @Override
     public boolean existsByIsbn(String isbn) {
         String sql = """
             SELECT EXISTS (

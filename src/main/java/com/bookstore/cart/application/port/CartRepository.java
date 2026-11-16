@@ -20,4 +20,6 @@ public interface CartRepository {
     boolean removeOne(Long cartId, Long bookId);
 
     void clearItems(Long cartId);
+
+    boolean deleteItem(Long cartId, Long bookId);
 }
