@@ -15,7 +15,7 @@ public class OutboxEvent {
     private final UUID id;
     private final String aggregateType;
     private final Long aggregateId;
-    private final String eventType;
+    private final OutboxEventType eventType;
     private final String payload;
     private final Status status;
     private final int attempts;
@@ -32,7 +32,7 @@ public class OutboxEvent {
             UUID id,
             String aggregateType,
             Long aggregateId,
-            String eventType,
+            OutboxEventType eventType,
             String payload,
             Status status,
             int attempts,
@@ -57,7 +57,7 @@ public class OutboxEvent {
         this.lastError = lastError;
     }
 
-    public static OutboxEvent pending(String aggregateType, Long aggregateId, String eventType, String payload) {
+    public static OutboxEvent pending(String aggregateType, Long aggregateId, OutboxEventType eventType, String payload) {
         return new OutboxEvent(
                 null,
                 aggregateType,
@@ -86,7 +86,7 @@ public class OutboxEvent {
         return aggregateId;
     }
 
-    public String getEventType() {
+    public OutboxEventType getEventType() {
         return eventType;
     }
 

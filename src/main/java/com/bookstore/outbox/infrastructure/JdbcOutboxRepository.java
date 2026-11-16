@@ -3,7 +3,7 @@ package com.bookstore.outbox.infrastructure;
 
 import com.bookstore.outbox.application.port.OutboxRepository;
 import com.bookstore.outbox.domain.OutboxEvent;
-
+import com.bookstore.outbox.domain.OutboxEventType;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -42,7 +42,7 @@ public class JdbcOutboxRepository implements OutboxRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("aggregateType", event.getAggregateType())
                 .addValue("aggregateId", event.getAggregateId())
-                .addValue("eventType", event.getEventType())
+                .addValue("eventType", event.getEventType().name())
                 .addValue("payload", event.getPayload());
 
         return jdbc.queryForObject(sql, params, this::mapEvent);
@@ -161,7 +161,7 @@ public class JdbcOutboxRepository implements OutboxRepository {
                 rs.getObject("id", UUID.class),
                 rs.getString("aggregate_type"),
                 rs.getLong("aggregate_id"),
-                rs.getString("event_type"),
+                OutboxEventType.valueOf(rs.getString("event_type")),
                 rs.getString("payload"),
                 OutboxEvent.Status.valueOf(rs.getString("status")),
                 rs.getInt("attempts"),

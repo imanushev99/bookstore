@@ -16,6 +16,7 @@ import com.bookstore.order.domain.OrderItem;
 import com.bookstore.order.domain.OrderStatus;
 import com.bookstore.outbox.application.port.OutboxRepository;
 import com.bookstore.outbox.domain.OutboxEvent;
+import com.bookstore.outbox.domain.OutboxEventType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
@@ -134,7 +135,7 @@ public class OrderService {
         outboxRepository.save(OutboxEvent.pending(
                         "ORDER",
                         savedOrder.getId(),
-                        "ORDER_SUBMITTED",
+                        OutboxEventType.ORDER_SUBMITTED,
                         payload));
 
         // Clear items, but keep the cart.
