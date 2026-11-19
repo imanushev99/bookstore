@@ -3,9 +3,12 @@ package com.bookstore.inventory.application;
 
 import com.bookstore.book.application.port.BookRepository;
 import com.bookstore.book.domain.Book;
+import com.bookstore.common.application.AfterCommit;
 import com.bookstore.order.application.port.OrderRepository;
 import com.bookstore.order.domain.OrderItem;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +20,8 @@ import java.util.Set;
 
 @Service
 public class InventoryAllocationService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryAllocationService.class);
 
     private final BookRepository bookRepository;
     private final OrderRepository orderRepository;
@@ -76,5 +81,10 @@ public class InventoryAllocationService {
         affectedOrderIds.stream()
                 .sorted()
                 .forEach(orderRepository::refreshAllocationStatus);
+
+        if (!affectedOrderIds.isEmpty() && log.isDebugEnabled()) {
+            AfterCommit.run(() -> log.debug("Inventory allocation updated bookId={} quantityAllocated={} affectedOrderCount={}",
+                    bookId, allocatedStock, affectedOrderIds.size()));
+        }
     }
 }

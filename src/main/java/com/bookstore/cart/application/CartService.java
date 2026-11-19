@@ -8,7 +8,10 @@ import com.bookstore.cart.api.dto.CartResponse;
 import com.bookstore.cart.application.port.CartRepository;
 import com.bookstore.cart.domain.Cart;
 import com.bookstore.cart.domain.CartItem;
+import com.bookstore.common.application.AfterCommit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +21,8 @@ import java.util.Optional;
 
 @Service
 public class CartService {
+
+    private static final Logger log = LoggerFactory.getLogger(CartService.class);
 
     private final CartRepository cartRepository;
     private final BookRepository bookRepository;
@@ -49,6 +54,7 @@ public class CartService {
 
         // Atomically increase quantity by one.
         cartRepository.addOne(cart.getId(), bookId);
+        AfterCommit.run(() -> log.debug("Increased cart item quantity cartId={} bookId={}", cart.getId(), bookId));
 
         return getUpdatedCart(cart.getId(), userId);
     }
@@ -68,7 +74,9 @@ public class CartService {
         }
 
         // Decrease quantity by one, deleting the item at zero.
-        cartRepository.removeOne(cart.getId(), bookId);
+        if (cartRepository.removeOne(cart.getId(), bookId)) {
+            AfterCommit.run(() -> log.debug("Decreased cart item quantity cartId={} bookId={}", cart.getId(), bookId));
+        }
 
         return getUpdatedCart(cart.getId(), userId);
     }

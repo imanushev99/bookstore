@@ -1,7 +1,6 @@
 package com.bookstore.order.application;
 
-import com.bookstore.book.application.port.BookRepository;
-import com.bookstore.book.domain.Book;
+import com.bookstore.common.application.AfterCommit;
 import com.bookstore.inventory.application.InventoryAllocationService;
 import com.bookstore.messaging.application.port.ProcessedEventRepository;
 import com.bookstore.order.application.port.OrderRepository;
@@ -9,6 +8,8 @@ import com.bookstore.order.domain.Order;
 import com.bookstore.order.domain.OrderItem;
 import com.bookstore.order.domain.OrderStatus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.UUID;
 @Service
 public class OrderProcessingService {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderProcessingService.class);
     private static final String CONSUMER_NAME = "ORDER_PROCESSOR";
 
     private final OrderRepository orderRepository;
@@ -46,6 +48,7 @@ public class OrderProcessingService {
     public void processOrder(UUID eventId, Long orderId) {
         // Prevent processing the same Kafka event twice (deduplication)
         if (!processedEventRepository.tryMarkProcessed(eventId, CONSUMER_NAME)) {
+            log.debug("Skipped duplicate order event orderId={} eventId={}", orderId, eventId);
             return;
         }
 
@@ -54,6 +57,8 @@ public class OrderProcessingService {
 
         // Protect against different events processing the same order after it has already been classified.
         if (order.getStatus() != OrderStatus.PENDING) {
+            log.debug("Skipped order processing orderId={} eventId={} status={}",
+                    orderId, eventId, order.getStatus());
             return;
         }
 
@@ -76,5 +81,7 @@ public class OrderProcessingService {
         for (Long bookId : bookIds) {
             inventoryAllocationService.allocateOutstandingForBook(bookId);
         }
+
+        AfterCommit.run(() -> log.info("Order processed orderId={} eventId={}", orderId, eventId));
     }
 }

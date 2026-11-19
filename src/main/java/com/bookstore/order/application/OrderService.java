@@ -7,6 +7,7 @@ import com.bookstore.cart.application.port.CartRepository;
 import com.bookstore.cart.domain.Cart;
 import com.bookstore.cart.domain.CartItem;
 import com.bookstore.common.api.PageResponse;
+import com.bookstore.common.application.AfterCommit;
 import com.bookstore.order.api.dto.OrderItemResponse;
 import com.bookstore.order.api.dto.OrderResponse;
 import com.bookstore.order.application.event.OrderSubmittedEvent;
@@ -17,6 +18,8 @@ import com.bookstore.order.domain.OrderStatus;
 import com.bookstore.outbox.application.port.OutboxRepository;
 import com.bookstore.outbox.domain.OutboxEvent;
 import com.bookstore.outbox.domain.OutboxEventType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
@@ -29,6 +32,8 @@ import java.util.NoSuchElementException;
 
 @Service
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -132,7 +137,7 @@ public class OrderService {
         // aggregate_id identifies the entity associated with the event.
         // We can use it for querying, grouping, and choosing the Kafka message key to preserve ordering for that entity.
         // payload contains the actual event data that the Kafka consumer needs to process.
-        outboxRepository.save(OutboxEvent.pending(
+        OutboxEvent savedEvent = outboxRepository.save(OutboxEvent.pending(
                         "ORDER",
                         savedOrder.getId(),
                         OutboxEventType.ORDER_SUBMITTED,
@@ -140,6 +145,9 @@ public class OrderService {
 
         // Clear items, but keep the cart.
         cartRepository.clearItems(cart.getId());
+
+        AfterCommit.run(() -> log.info("Order submitted orderId={} eventId={} lineCount={}",
+                savedOrder.getId(), savedEvent.getId(), orderItems.size()));
 
         return toResponse(savedOrder);
     }

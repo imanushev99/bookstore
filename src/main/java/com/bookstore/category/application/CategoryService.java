@@ -7,6 +7,9 @@ import com.bookstore.category.application.exception.CategoryAlreadyExistsExcepti
 import com.bookstore.category.application.exception.CategoryInUseException;
 import com.bookstore.category.application.port.CategoryRepository;
 import com.bookstore.category.domain.Category;
+import com.bookstore.common.application.AfterCommit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,8 @@ import java.util.Objects;
 
 @Service
 public class CategoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(CategoryService.class);
 
     private final CategoryRepository categoryRepository;
 
@@ -49,6 +54,7 @@ public class CategoryService {
 
         try {
             Category savedCategory = categoryRepository.save(category);
+            AfterCommit.run(() -> log.info("Category created categoryId={}", savedCategory.getId()));
             return toResponse(savedCategory);
         } catch (DuplicateKeyException exception) {
             throw new CategoryAlreadyExistsException("Category with name '" + name + "' already exists", exception);
@@ -90,6 +96,7 @@ public class CategoryService {
 
         try {
             categoryRepository.update(updated);
+            AfterCommit.run(() -> log.info("Category updated categoryId={}", id));
             return toResponse(updated);
         } catch (DuplicateKeyException exception) {
             throw new CategoryAlreadyExistsException("Category with name '" + name + "' already exists", exception);
@@ -103,6 +110,7 @@ public class CategoryService {
 
         try {
             categoryRepository.deleteById(id);
+            AfterCommit.run(() -> log.info("Category deleted categoryId={}", id));
         } catch (DataIntegrityViolationException exception) {
             throw new CategoryInUseException("Cannot delete category because it is assigned to one or more books", exception);
         }

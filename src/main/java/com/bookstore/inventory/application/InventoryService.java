@@ -3,7 +3,10 @@ package com.bookstore.inventory.application;
 
 import com.bookstore.book.application.port.BookRepository;
 import com.bookstore.book.domain.Book;
+import com.bookstore.common.application.AfterCommit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +14,8 @@ import java.util.NoSuchElementException;
 
 @Service
 public class InventoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryService.class);
 
     private final BookRepository bookRepository;
     private final InventoryAllocationService inventoryAllocationService;
@@ -54,5 +59,7 @@ public class InventoryService {
 
         // Fulfill outstanding demand, oldest orders first.
         inventoryAllocationService.allocateOutstandingForBook(bookId);
+
+        AfterCommit.run(() -> log.info("Book restocked bookId={} quantityAdded={}", bookId, quantity));
     }
 }

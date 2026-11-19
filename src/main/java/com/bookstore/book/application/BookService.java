@@ -10,6 +10,9 @@ import com.bookstore.category.api.dto.CategoryResponse;
 import com.bookstore.category.application.port.CategoryRepository;
 import com.bookstore.category.domain.Category;
 import com.bookstore.common.api.PageResponse;
+import com.bookstore.common.application.AfterCommit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +22,8 @@ import java.util.*;
 
 @Service
 public class BookService {
+
+    private static final Logger log = LoggerFactory.getLogger(BookService.class);
 
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
@@ -101,6 +106,7 @@ public class BookService {
 
         bookRepository.replaceCategories(savedBook.getId(), request.getCategoryIds());
 
+        AfterCommit.run(() -> log.info("Book created bookId={}", savedBook.getId()));
         return toResponse(savedBook, getBookCategories(savedBook.getId()));
     }
 
@@ -199,6 +205,7 @@ public class BookService {
                 .orElseThrow(() -> new NoSuchElementException("Book not found"));
 
         // categories need to be extracted because we have their IDs only in the request
+        AfterCommit.run(() -> log.info("Book updated bookId={}", id));
         return toResponse(refreshed, getBookCategories(id));
     }
 
@@ -208,6 +215,7 @@ public class BookService {
                 .orElseThrow(() -> new NoSuchElementException("Active book not found"));
 
         bookRepository.archiveById(id);
+        AfterCommit.run(() -> log.info("Book archived bookId={}", id));
     }
 
     @Transactional
@@ -216,6 +224,7 @@ public class BookService {
                 .orElseThrow(() -> new NoSuchElementException("Archived book not found"));
 
         bookRepository.restoreById(id);
+        AfterCommit.run(() -> log.info("Book restored bookId={}", id));
     }
 
     private void validateCategoryIds(List<Long> categoryIds) {

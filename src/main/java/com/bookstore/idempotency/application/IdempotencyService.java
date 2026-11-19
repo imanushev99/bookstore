@@ -5,6 +5,8 @@ import com.bookstore.idempotency.application.exception.IdempotencyRequestInProgr
 import com.bookstore.idempotency.application.port.IdempotencyRepository;
 import com.bookstore.idempotency.domain.IdempotencyOperation;
 import com.bookstore.idempotency.domain.IdempotencyRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,8 @@ import java.util.function.Supplier;
 
 @Service
 public class IdempotencyService {
+
+    private static final Logger log = LoggerFactory.getLogger(IdempotencyService.class);
 
     private static final int EXPIRATION_HOURS = 24;
 
@@ -75,16 +79,21 @@ public class IdempotencyService {
 
         // Same key must always represent the same payload. Otherwise, the new request uses already used I.K.
         if (!existing.getRequestHash().equals(requestHash)) {
+            log.debug("Idempotency request conflict operation={} recordId={}", operation, existing.getId());
             throw new IdempotencyKeyConflictException("Idempotency key was already used with a different request");
         }
 
         // An incomplete record cannot be replayed.
         if (!existing.isCompleted()) {
+            log.debug("Idempotency request in progress operation={} recordId={}", operation, existing.getId());
             throw new IdempotencyRequestInProgressException("Request is still being processed");
         }
 
         // Return the previously stored HTTP response.
-        return replay(existing);
+        ResponseEntity<?> response = replay(existing);
+        log.debug("Replayed idempotent response operation={} recordId={} status={}",
+                operation, existing.getId(), response.getStatusCode().value());
+        return response;
     }
 
     // An expired key can still replay its old response until the cleanup actually deletes it.
