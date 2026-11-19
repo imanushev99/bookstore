@@ -154,6 +154,7 @@ public class BookService {
             throw new BookAlreadyExistsException("A book with ISBN " + isbn + " already exists");
         }
 
+        // stock shouldn't be updated here, because this relates only to metadata => new endpoint for configuring stock
         boolean metadataChanged = !Objects.equals(existing.getTitle(), title)
                                     || !Objects.equals(existing.getAuthor(), author)
                                     || isbnChanged
@@ -179,27 +180,25 @@ public class BookService {
         }
 
         if (!metadataChanged && !categoriesChanged) {
-            try {
-                bookRepository.updateMetadata(updated);
-            } catch (DuplicateKeyException exception) {
-                // someone may have created a book with that isbn during this time because the table is not locked
-                throw new BookAlreadyExistsException("A book with ISBN " + isbn + " already exists", exception);
-            }
-        }
-
-        // check both because if only categoriesChanged == true, metadata still includes updated_at which needs to be updated
-        if (metadataChanged || categoriesChanged) {
-            bookRepository.updateMetadata(updated);
+            return toResponse(existing, existingCategories);
         }
 
         if (categoriesChanged) {
             bookRepository.replaceCategories(id, request.getCategoryIds());
         }
 
+        // even if only categoriesChanged == true, metadata still includes updated_at which needs to be updated
+        try {
+            bookRepository.updateMetadata(updated);
+        } catch (DuplicateKeyException exception) {
+            // someone may have created a book with that isbn during this time because the table is not locked
+            throw new BookAlreadyExistsException("A book with ISBN " + isbn + " already exists", exception);
+        }
+
         Book refreshed = bookRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Book not found"));
 
-        // categories need to be extracted because we have their IDs in the request
+        // categories need to be extracted because we have their IDs only in the request
         return toResponse(refreshed, getBookCategories(id));
     }
 
