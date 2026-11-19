@@ -6,12 +6,16 @@ import com.bookstore.user.api.dto.UpdateProfileRequest;
 import com.bookstore.user.api.dto.UserResponse;
 import com.bookstore.user.application.UserService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
 
@@ -21,6 +25,7 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getProfile() {
+        log.info("action=getProfile");
         Long userId = SecurityUtils.getCurrentUserId();
 
         UserResponse response = userService.getProfile(userId);
@@ -30,6 +35,7 @@ public class UserController {
 
     @PutMapping("/me")
     public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        log.info("action=updateProfile");
         Long userId = SecurityUtils.getCurrentUserId();
 
         UserResponse response = userService.updateProfile(userId, request);
@@ -45,6 +51,7 @@ public class UserController {
     // solution: idempotent requests
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        log.info("action=changePassword");
         Long userId = SecurityUtils.getCurrentUserId();
 
         userService.changePassword(userId, request);

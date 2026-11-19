@@ -10,12 +10,16 @@ import com.bookstore.inventory.application.InventoryService;
 
 import jakarta.validation.Valid;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/books")
 public class InventoryController {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryController.class);
 
     private final InventoryService inventoryService;
     private final IdempotencyService idempotencyService;
@@ -45,6 +49,7 @@ public class InventoryController {
             @PathVariable Long bookId,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody RestockBookRequest request) {
+        log.info("action=restockBook, bookId={}, quantity={}", bookId, request.getQuantity());
 
         Long userId = SecurityUtils.getCurrentUserId();
 
