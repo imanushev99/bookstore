@@ -32,9 +32,7 @@ public interface OrderRepository {
 
     void updateStatus(Long orderId, OrderStatus status);
 
-    // used in OrderProcessingService
-
-    //return both pending and backordered demand, oldest first
+    //return both pending and backordered, oldest first
     List<OrderItem> findOutstandingItemsByBookId(Long bookId);
 
     void updateItemAllocation(

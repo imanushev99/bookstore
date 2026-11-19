@@ -50,6 +50,8 @@ public class InventoryAllocationService {
 
         for (OrderItem item : outstandingItems) {
 
+            // for newly create orders (PENDING), that are not proccessed by Kafka yet, the backordered quantity is still 0.
+            // => we cannot use backordered quantity for such orders.
             int remaining = item.getQuantity() - item.getAllocatedQuantity();
 
             int allocatedNow = Math.min(availableStock, remaining);
