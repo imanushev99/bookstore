@@ -6,6 +6,9 @@ import com.bookstore.category.application.exception.CategoryAlreadyExistsExcepti
 import com.bookstore.category.application.exception.CategoryInUseException;
 import com.bookstore.idempotency.application.exception.IdempotencyKeyConflictException;
 import com.bookstore.idempotency.application.exception.IdempotencyRequestInProgressException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
@@ -16,12 +19,16 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.validation.FieldError;
 
 import java.util.Map;
 import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
@@ -39,7 +46,19 @@ public class GlobalExceptionHandler {
 
     // in case a @Valid fails in the API's
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String, String>> handleValidation(
+            MethodArgumentNotValidException ex, HttpServletRequest request) {
+        if (log.isDebugEnabled()) {
+            Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+            var invalidFields = ex.getBindingResult().getFieldErrors().stream()
+                    .map(FieldError::getField)
+                    .distinct()
+                    .toList();
+
+            log.debug("Request validation failed method={} route={} invalidFields={}",
+                    request.getMethod(), route == null ? "unknown" : route, invalidFields);
+        }
+
         String message = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
