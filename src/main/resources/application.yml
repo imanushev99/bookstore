@@ -2,6 +2,8 @@
 spring:
   application:
     name: bookstore
+  config:
+    import: optional:file:.env[.properties]
 
   # PostgreSQL database configuration
   datasource:
@@ -16,7 +18,7 @@ spring:
 
   # Kafka configuration
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${DB_PASSWORD=bookstore_devKAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
