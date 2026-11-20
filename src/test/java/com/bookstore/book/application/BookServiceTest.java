@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -60,7 +61,7 @@ class BookServiceTest {
         BookResponse response = bookService.createBook(createRequest(categoryIds));
 
         ArgumentCaptor<Book> saved = ArgumentCaptor.forClass(Book.class);
-        var writes = inOrder(bookRepository);
+        InOrder writes = inOrder(bookRepository);
         writes.verify(bookRepository).save(saved.capture());
         writes.verify(bookRepository).replaceCategories(BOOK_ID, categoryIds);
         assertEquals("Original title", saved.getValue().getTitle());
@@ -105,7 +106,7 @@ class BookServiceTest {
         DuplicateKeyException duplicateKey = new DuplicateKeyException("Duplicate ISBN");
         when(bookRepository.save(any(Book.class))).thenThrow(duplicateKey);
 
-        var error = assertThrows(BookAlreadyExistsException.class,
+        BookAlreadyExistsException error = assertThrows(BookAlreadyExistsException.class,
                 () -> bookService.createBook(createRequest(List.of())));
 
         assertSame(duplicateKey, error.getCause());

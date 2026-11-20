@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.validation.FieldError;
 
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -50,7 +51,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex, HttpServletRequest request) {
         if (log.isDebugEnabled()) {
             Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-            var invalidFields = ex.getBindingResult().getFieldErrors().stream()
+            List<String> invalidFields = ex.getBindingResult().getFieldErrors().stream()
                     .map(FieldError::getField)
                     .distinct()
                     .toList();

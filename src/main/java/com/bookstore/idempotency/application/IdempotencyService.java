@@ -15,6 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 @Service
@@ -48,7 +49,7 @@ public class IdempotencyService {
                 .plusHours(EXPIRATION_HOURS);
 
         // Attempt to claim the idempotency key.
-        var claimed = repository.tryClaim(
+        Optional<IdempotencyRequest> claimed = repository.tryClaim(
                 userId,
                 operation,
                 idempotencyKey,
