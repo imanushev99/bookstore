@@ -62,27 +62,29 @@ The claim, business action, and saved response commit in **one transaction**. Re
 
 **Requirements:** JDK 21, Docker Desktop / Docker Compose, and an available port **5432**, **9092**, and **8080**. Commands below use Windows PowerShell.
 
-1. Start PostgreSQL and Kafka from the project root:
+1. From the project root, set `DB_PASSWORD` to a local password and generate a Base64-encoded 32-byte `JWT_SECRET`. Run the remaining commands from the same PowerShell session so Docker Compose and Spring Boot receive the environment variables.
 
    ```powershell
-   docker compose up -d
-   ```
-
-2. Create the Kafka topic (the compose file does not create it automatically):
-
-   ```powershell
-   docker exec bookstore-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --if-not-exists --topic bookstore.orders.submitted --partitions 3 --replication-factor 1
-   ```
-
-3. Set local environment variables. The **current compose file uses a development-only database password**; the two values must match. Generate a new Base64-encoded 32-byte JWT secret:
-
-   ```powershell
-   $env:DB_PASSWORD = 'bookstore_dev'
+   $env:DB_PASSWORD = Read-Host 'PostgreSQL password'
    $bytes = New-Object byte[] 32
    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
    $rng.GetBytes($bytes)
    $env:JWT_SECRET = [Convert]::ToBase64String($bytes)
    $rng.Dispose()
+   ```
+
+   If PostgreSQL already has a data volume, enter the current password for the `bookstore` role. Changing `DB_PASSWORD` only sets the database password when PostgreSQL initializes a fresh volume.
+
+2. Start PostgreSQL and Kafka:
+
+   ```powershell
+   docker compose up -d
+   ```
+
+3. Create the Kafka topic:
+
+   ```powershell
+   docker exec bookstore-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --if-not-exists --topic bookstore.orders.submitted --partitions 3 --replication-factor 1
    ```
 
 4. Start Spring Boot:
@@ -123,6 +125,6 @@ The claim, business action, and saved response commit in **one transaction**. Re
 5. **Testing:** Expand the existing category unit tests with service, JDBC integration, API, Kafka, idempotency, and concurrency tests.
 6. **Deployment:** Persist Kafka broker data, automate topic creation, provide environment-specific configuration, and improve startup/bootstrap scripts.
 7. **Migrations:** The V4 ISBN migration deletes existing book data; replace this development-only approach with a safe backfill/migration strategy before using real data.
-8. **Security:** The repository currently contains a **development database password** in `compose.yaml` and as a fallback in `application.yml`, plus **example credentials** in `requests/*.http`. Replace these with environment variables/placeholder values for shared or real deployments; never commit real JWT secrets, tokens, or production passwords. Use a local `.env` (ignored by Git), a committed `.env.example` template, or a secret manager. Update `.gitignore` to allow `!.env.example` if adding the template. Rotate any real credential previously pushed (including in Git history).
+8. **Security** — Use `.env.example` as a reference for local environment variables. Docker Compose reads a local `.env` file, which Git ignores. When launching Spring Boot from PowerShell or IntelliJ, set `DB_PASSWORD` and `JWT_SECRET` in the shell or run configuration. Kafka defaults to `localhost:9092` and can be overridden with `KAFKA_BOOTSTRAP_SERVERS`. Keep real credentials out of `requests/*.http` and Git.
 
 **Scope:** This is an in-progress backend demonstration. The code illustrates the intended architecture and business flow; it is not yet production-hardened or fully covered by automated tests.
