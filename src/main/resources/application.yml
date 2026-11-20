@@ -6,8 +6,8 @@ spring:
   # PostgreSQL database configuration
   datasource:
     url: jdbc:postgresql://localhost:5432/bookstore
-    username: bookstore
-    password: ${DB_PASSWORD:bookstore_dev}
+    username: ${DB_USERNAME:bookstore}
+    password: ${DB_PASSWORD}
 
   # Flyway database migrations
   flyway:
