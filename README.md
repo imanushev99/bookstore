@@ -1,6 +1,6 @@
 # Bookstore Backend API
 
-A Java/Spring Boot backend for an online bookstore, built as a technical assignment. The focus is on clear business rules, transactional consistency, concurrency, and asynchronous order processing—not a frontend.
+A Java/Spring Boot backend for an online bookstore, built as a technical assignment. The focus is on clear business rules, transactional consistency, concurrency, and asynchronous order processing - not a frontend.
 
 ## Tech stack and architecture
 
@@ -8,10 +8,10 @@ A Java/Spring Boot backend for an online bookstore, built as a technical assignm
 - **PostgreSQL 17**, **Flyway**, Spring JDBC (`NamedParameterJdbcTemplate`)
 - **Apache Kafka**, Docker Compose, JUnit/Mockito (initial tests)
 - **Lightweight hexagonal architecture**, organized by feature (`auth`, `user`, `category`, `book`, `cart`, `order`, `inventory`, `idempotency`, `outbox`, `messaging`):
-  - `api` — REST controllers and request/response DTOs
-  - `application` — business logic; `application.port` — repository interfaces
-  - `domain` — business models and enums
-  - `infrastructure` — JDBC implementations, Kafka publisher/consumer
+  - `api`  -  REST controllers and request/response DTOs
+  - `application`  -  business logic; `application.port`  -  repository interfaces
+  - `domain`  -  business models and enums
+  - `infrastructure`  -  JDBC implementations, Kafka publisher/consumer
 
 Persistence uses explicit SQL rather than JPA entities. Flyway migrations (`V1`–`V6`) define the database schema.
 
@@ -125,6 +125,6 @@ The claim, business action, and saved response commit in **one transaction**. Re
 5. **Testing:** Expand the existing category unit tests with service, JDBC integration, API, Kafka, idempotency, and concurrency tests.
 6. **Deployment:** Persist Kafka broker data, automate topic creation, provide environment-specific configuration, and improve startup/bootstrap scripts.
 7. **Migrations:** The V4 ISBN migration deletes existing book data; replace this development-only approach with a safe backfill/migration strategy before using real data.
-8. **Security** — Use `.env.example` as a reference for local environment variables. Docker Compose reads a local `.env` file, which Git ignores. When launching Spring Boot from PowerShell or IntelliJ, set `DB_PASSWORD` and `JWT_SECRET` in the shell or run configuration. Kafka defaults to `localhost:9092` and can be overridden with `KAFKA_BOOTSTRAP_SERVERS`. Keep real credentials out of `requests/*.http` and Git.
+8. **Security**  -  Use `.env.example` as a reference for local environment variables. Docker Compose reads a local `.env` file, which Git ignores. When launching Spring Boot from PowerShell or IntelliJ, set `DB_PASSWORD` and `JWT_SECRET` in the shell or run configuration. Kafka defaults to `localhost:9092` and can be overridden with `KAFKA_BOOTSTRAP_SERVERS`. Keep real credentials out of `requests/*.http` and Git.
 
 **Scope:** This is an in-progress backend demonstration. The code illustrates the intended architecture and business flow; it is not yet production-hardened or fully covered by automated tests.
