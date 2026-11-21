@@ -34,16 +34,11 @@ public class KafkaOutboxProducer {
 
         String key = event.getAggregateType() + ":" + event.getAggregateId();
 
-        ProducerRecord<String, String> record =
-                new ProducerRecord<>(topic, key, event.getPayload());
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, event.getPayload());
 
-        record.headers().add(
-                "eventId",
-                event.getId().toString().getBytes(StandardCharsets.UTF_8));
+        record.headers().add("eventId", event.getId().toString().getBytes(StandardCharsets.UTF_8));
 
-        record.headers().add(
-                "eventType",
-                event.getEventType().name().getBytes(StandardCharsets.UTF_8));
+        record.headers().add("eventType", event.getEventType().name().getBytes(StandardCharsets.UTF_8));
 
         // returns a CompletableFuture, allowing us to determine when Kafka acknowledges the message
         return kafkaTemplate.send(record);

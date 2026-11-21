@@ -41,8 +41,7 @@ public class IdempotencyService {
             String requestHash,
             Supplier<ResponseEntity<?>> action) {
 
-        validate(userId, operation, idempotencyKey, requestHash);
-        Objects.requireNonNull(action, "Action is required");
+        validate(userId, operation, idempotencyKey, requestHash, action);
 
         OffsetDateTime expiresAt = OffsetDateTime
                 .now(ZoneOffset.UTC)
@@ -85,6 +84,7 @@ public class IdempotencyService {
         }
 
         // An incomplete record cannot be replayed.
+        // Although currently all requests are completed after the execution of the action.
         if (!existing.isCompleted()) {
             log.debug("Idempotency request in progress operation={} recordId={}", operation, existing.getId());
             throw new IdempotencyRequestInProgressException("Request is still being processed");
@@ -111,12 +111,13 @@ public class IdempotencyService {
                 .body(jsonMapper.readTree(body));
     }
 
-    private void validate(Long userId, IdempotencyOperation operation, String idempotencyKey, String requestHash) {
+    private void validate(Long userId, IdempotencyOperation operation, String idempotencyKey, String requestHash, Supplier<ResponseEntity<?>> action) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Valid user ID is required");
         }
 
         Objects.requireNonNull(operation, "Operation is required");
+        Objects.requireNonNull(action, "Action is required");
 
         if (idempotencyKey == null
                 || idempotencyKey.isBlank()
