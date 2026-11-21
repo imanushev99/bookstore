@@ -102,11 +102,7 @@ public class JdbcOutboxRepository implements OutboxRepository {
 
     // Releases a failed event and schedules its next attempt
     @Override
-    public boolean releaseForRetry(
-            UUID eventId,
-            UUID claimToken,
-            OffsetDateTime nextAttemptAt,
-            String lastError) {
+    public boolean releaseForRetry(UUID eventId, UUID claimToken, OffsetDateTime nextAttemptAt, String lastError) {
         String sql = """
                 UPDATE outbox_events
                 SET status = 'PENDING',

@@ -32,7 +32,6 @@ public class OutboxPublisher {
         this.producer = producer;
     }
 
-    // Failed sends are scheduled with exponential backoff = 5 minutes
     @Scheduled(fixedDelayString = "${bookstore.outbox.poll-delay-ms:5000}", initialDelay = 10000)
     public void publishPendingEvents() {
         try {
@@ -83,7 +82,8 @@ public class OutboxPublisher {
     }
 
     private void scheduleRetry(OutboxEvent event, UUID claimToken, Exception exception) {
-        long delaySeconds = Math.min(300L, 1L << Math.min(event.getAttempts(), 8));
+        int exponent = Math.min(event.getAttempts(), 8);
+        long delaySeconds = (long) Math.pow(2, exponent);
 
         OffsetDateTime nextAttemptAt = OffsetDateTime
                 .now(ZoneOffset.UTC)
