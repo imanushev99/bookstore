@@ -11,7 +11,7 @@ public interface OutboxRepository {
 
     OutboxEvent save(OutboxEvent event);
 
-    // Atomically claim a batch of events ready for publishing
+    // Atomically claim a batch of events that are ready for publishing
     List<OutboxEvent> claimPending(int batchSize, UUID claimToken, OffsetDateTime lockedUntil);
 
     // Mark an event as published after Kafka acknowledges it

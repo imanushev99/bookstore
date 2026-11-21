@@ -44,10 +44,7 @@ public class OutboxPublisher {
                     .now(ZoneOffset.UTC)
                     .plusMinutes(CLAIM_DURATION_MINUTES);
 
-            List<OutboxEvent> events = repository.claimPending(
-                    BATCH_SIZE,
-                    claimToken,
-                    lockedUntil);
+            List<OutboxEvent> events = repository.claimPending(BATCH_SIZE, claimToken, lockedUntil);
 
             for (OutboxEvent event : events) {
                 if (Thread.currentThread().isInterrupted()) {
@@ -99,15 +96,9 @@ public class OutboxPublisher {
                 exception.toString());
 
         if (released) {
-            log.warn(
-                    "Publishing event {} failed. Retry in {} seconds",
-                    event.getId(),
-                    delaySeconds,
-                    exception);
+            log.warn("Publishing event {} failed. Retry in {} seconds", event.getId(), delaySeconds, exception);
         } else {
-            log.warn(
-                    "Could not release event {}: claim changed",
-                    event.getId());
+            log.warn("Could not release event {}: claim changed", event.getId());
         }
     }
 }

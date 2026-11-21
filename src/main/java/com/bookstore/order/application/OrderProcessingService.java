@@ -39,10 +39,11 @@ public class OrderProcessingService {
     }
 
     // BEGIN
-    //  1. Mark Kafka event as processed
-    //  2. Find order and its items
-    //  3. Lock book rows and allocate inventory
-    //  4. Update affected order items and statuses
+    // 1. Deduplicate the Kafka event to prevent repeated processing.
+    // 2. Retrieve the submitted order and identify its distinct books.
+    // 3. For each book, allocate available inventory across ALL outstanding
+    //    orders, prioritizing the oldest orders regardless of Kafka event order.
+    // 4. Update allocated/backordered quantities and affected order statuses.
     // COMMIT
     @Transactional
     public void processOrder(UUID eventId, Long orderId) {
