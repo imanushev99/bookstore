@@ -1,6 +1,6 @@
 # Bookstore Backend API
 
-A Java/Spring Boot backend for an online bookstore, built as a technical assignment. The focus is on clear business rules, transactional consistency, concurrency, and asynchronous order processing - not a frontend.
+A Java/Spring Boot backend for an online bookstore, built as a technical assignment. The focus is on clear business rules, transactional consistency, concurrency, and asynchronous order processing.
 
 ## Tech stack and architecture
 
@@ -118,13 +118,13 @@ The claim, business action, and saved response commit in **one transaction**. Re
 
 ## Known trade-offs and next steps
 
-1. **Concurrency:** Harden multi-book locking, deadlock/serialization retries, status transitions, and strict priority guarantees under all interleavings.
-2. **Order lifecycle:** Add cancellation (including releasing allocated stock), shipping/delivery operations, and clearer fulfillment workflows.
-3. **Kafka resilience:** Define consumer retry/backoff and dead-letter handling; complete restock notifications and decide which additional events are needed.
-4. **Observability:** Add structured logs, correlation/event IDs, metrics, and health/monitoring support.
-5. **Testing:** Expand the existing category unit tests with service, JDBC integration, API, Kafka, idempotency, and concurrency tests.
-6. **Deployment:** Persist Kafka broker data, automate topic creation, provide environment-specific configuration, and improve startup/bootstrap scripts.
-7. **Migrations:** The V4 ISBN migration deletes existing book data; replace this development-only approach with a safe backfill/migration strategy before using real data.
-8. **Security**  -  Use `.env.example` as a reference for local environment variables. Docker Compose reads a local `.env` file, which Git ignores. When launching Spring Boot from PowerShell or IntelliJ, set `DB_PASSWORD` and `JWT_SECRET` in the shell or run configuration. Kafka defaults to `localhost:9092` and can be overridden with `KAFKA_BOOTSTRAP_SERVERS`. Keep real credentials out of `requests/*.http` and Git.
+1. **Concurrency.** A PostgreSQL integration test verifies that two simultaneous creates with the same ISBN result in one committed book and one conflict. Multi-book inventory locking, retries after deadlocks or serialization failures, and allocation priority under concurrent updates still need coverage and hardening.
+2. **Order lifecycle.** Add cancellation that releases allocated stock, plus shipping and delivery status transitions.
+3. **Kafka resilience.** The outbox retries failed publishes. Define consumer retry and dead-letter handling, and implement restock notifications if they are needed.
+4. **Observability.** Controllers log endpoint entry at `INFO`, and request validation failures are logged at `DEBUG`. Key service writes log after commit, and order submission and processing logs include order and event IDs. Request correlation across components, metrics, and health monitoring remain open.
+5. **Testing.** Book and category services have unit tests. The duplicate-ISBN race runs against PostgreSQL 17 with Flyway and Testcontainers when Docker is available. Expand coverage for HTTP authorization, checkout idempotency, Kafka redelivery, and inventory concurrency.
+6. **Deployment.** Persist Kafka broker data and automate topic creation and local startup.
+7. **Migrations.** The V4 ISBN migration deletes existing book data. Use a backfill that preserves rows before applying this schema change to a database with data to retain.
+8. **Security.** Local setup takes `DB_PASSWORD` and `JWT_SECRET` from the environment (.env file). Access tokens expire after 15 minutes by default. Logout relies on the client discarding the token, so a retained copy remains usable until expiry. Server-side revocation would require shared state across app instances.
 
 **Scope:** This is an in-progress backend demonstration. The code illustrates the intended architecture and business flow; it is not yet production-hardened or fully covered by automated tests.
