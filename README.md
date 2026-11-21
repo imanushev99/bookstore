@@ -118,7 +118,7 @@ The claim, business action, and saved response commit in **one transaction**. Re
 
 ## Known trade-offs and next steps
 
-1. **Concurrency.** A PostgreSQL integration test verifies that two simultaneous creates with the same ISBN result in one committed book and one conflict. Multi-book inventory locking, retries after deadlocks or serialization failures, and allocation priority under concurrent updates still need coverage and hardening.
+1. **Concurrency.** A PostgreSQL integration test verifies that two simultaneous creates with the same ISBN result in one committed book and one conflict. Multi-book inventory locking, retries after deadlocks, and allocation priority under concurrent updates still need coverage and hardening.
 2. **Order lifecycle.** Add cancellation that releases allocated stock, plus shipping and delivery status transitions.
 3. **Kafka resilience.** The outbox retries failed publishes. Define consumer retry and dead-letter handling, and implement restock notifications if they are needed.
 4. **Observability.** Controllers log endpoint entry at `INFO`, and request validation failures are logged at `DEBUG`. Key service writes log after commit, and order submission and processing logs include order and event IDs. Request correlation across components, metrics, and health monitoring remain open.

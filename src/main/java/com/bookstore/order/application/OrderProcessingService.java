@@ -57,8 +57,7 @@ public class OrderProcessingService {
 
         // Protect against different events processing the same order after it has already been classified.
         if (order.getStatus() != OrderStatus.PENDING) {
-            log.debug("Skipped order processing orderId={} eventId={} status={}",
-                    orderId, eventId, order.getStatus());
+            log.debug("Skipped order processing orderId={} eventId={} status={}", orderId, eventId, order.getStatus());
             return;
         }
 
@@ -74,9 +73,6 @@ public class OrderProcessingService {
                 .distinct()
                 .sorted()
                 .toList();
-
-        Set<Long> affectedOrderIds = new HashSet<>();
-        affectedOrderIds.add(orderId);
 
         for (Long bookId : bookIds) {
             inventoryAllocationService.allocateOutstandingForBook(bookId);
