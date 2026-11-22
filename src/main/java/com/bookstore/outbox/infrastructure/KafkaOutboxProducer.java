@@ -44,6 +44,7 @@ public class KafkaOutboxProducer {
         return kafkaTemplate.send(record);
     }
 
+    // Currently restock is done synchronously but BOOK_RESTOCKED will be kept in case the restocking needs to be handled by Kafka in the future.
     private String resolveTopic(OutboxEventType eventType) {
         return switch (eventType) {
             case ORDER_SUBMITTED -> orderSubmittedTopic;
