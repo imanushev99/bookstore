@@ -23,6 +23,8 @@ public interface BookRepository {
 
     Optional<Book> findByIdForUpdate(Long id);
 
+    Optional<Book> findByIdForInventoryUpdate(Long bookId);
+
     // prevents an admin from archiving a book while its checkout is in progress; used in OrderService
     Optional<Book> findByIdForShare(Long id);
 
@@ -51,8 +53,6 @@ public interface BookRepository {
     void replaceCategories(Long bookId, List<Long> categoryIds);
 
     // used in OrderProcessingService
-
-    Optional<Book> findByIdForInventoryUpdate(Long bookId);
 
     void decreaseStock(Long bookId, int quantity);
 

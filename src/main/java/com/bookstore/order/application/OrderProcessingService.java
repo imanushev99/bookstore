@@ -56,7 +56,8 @@ public class OrderProcessingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NoSuchElementException("Order not found: " + orderId));
 
-        // Protect against different events processing the same order after it has already been classified.
+        // Another Kafka event or inventory restock operation might have already
+        // allocated inventory to this order and changed its status.
         if (order.getStatus() != OrderStatus.PENDING) {
             log.debug("Skipped order processing orderId={} eventId={} status={}", orderId, eventId, order.getStatus());
             return;

@@ -26,6 +26,8 @@ public class OrderSubmittedConsumer {
         this.jsonMapper = jsonMapper;
     }
 
+    // ackMode = "MANUAL_IMMEDIATE": our application manually acknowledges successful processing rather than
+    //                               relying on an automatic acknowledgment after the listener returns.
     @KafkaListener(
             topics = "${bookstore.kafka.topics.order-submitted}",
             groupId = "bookstore-order-processor",
