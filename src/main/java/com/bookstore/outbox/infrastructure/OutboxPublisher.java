@@ -53,8 +53,8 @@ public class OutboxPublisher {
                 try {
                     publishEvent(event, claimToken);
                 } catch (InterruptedException exception) {
+                    // InterruptedException clears the interrupt flag that's why we need to set it manually after that
                     Thread.currentThread().interrupt();
-
                     scheduleRetry(event, claimToken, exception);
                     break;
                 } catch (Exception exception) {
@@ -69,6 +69,7 @@ public class OutboxPublisher {
 
     private void publishEvent(OutboxEvent event, UUID claimToken) throws Exception {
         // Wait for Kafka acknowledgment.
+        // Must handle checked exceptions from .get()
         producer.publish(event)
                 .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
