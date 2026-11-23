@@ -58,7 +58,7 @@ public class OrderProcessingService {
 
         // Another Kafka event or inventory restock operation might have already
         // allocated inventory to this order and changed its status.
-        if (order.getStatus() != OrderStatus.PENDING) {
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PROCESSING) {
             log.debug("Skipped order processing orderId={} eventId={} status={}", orderId, eventId, order.getStatus());
             return;
         }

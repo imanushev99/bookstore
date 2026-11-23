@@ -193,46 +193,26 @@ public class JdbcOrderRepository implements OrderRepository {
         return jdbc.query(sql, params, this::mapOrderItem);
     }
 
-    // used when restocking
     @Override
-    public List<OrderItem> findBackorderedItemsByBookId(Long bookId) {
-        String sql = """
-                SELECT oi.*
-                FROM order_items oi
-                JOIN orders o ON o.id = oi.order_id
-                WHERE oi.book_id = :bookId
-                  AND oi.backordered_quantity > 0
-                  AND o.status NOT IN (
-                      'CANCELLED',
-                      'SHIPPED',
-                      'DELIVERED'
-                  )
-                ORDER BY o.created_at ASC, o.id ASC, oi.id ASC
-                """;
-
-        MapSqlParameterSource params = new MapSqlParameterSource("bookId", bookId);
-
-        return jdbc.query(sql, params, this::mapOrderItem);
-    }
-
-    @Override
-    public void updateStatus(Long orderId, OrderStatus status) {
+    public int markProcessingIfPending(Long orderId) {
         String sql = """
                 UPDATE orders
-                SET status = :status,
+                SET status = 'PROCESSING',
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :orderId
+                AND status = 'PENDING'
                 """;
 
         MapSqlParameterSource params = new MapSqlParameterSource()
-                .addValue("orderId", orderId)
-                .addValue("status", status.name());
+                .addValue("orderId", orderId);
 
         int updatedRows = jdbc.update(sql, params);
 
         if (updatedRows != 1) {
             throw new NoSuchElementException("Order not found: " + orderId);
         }
+
+        return updatedRows;
     }
 
     // includes:
@@ -305,7 +285,10 @@ public class JdbcOrderRepository implements OrderRepository {
                         WHERE oi.order_id = o.id
                           AND (oi.allocated_quantity + oi.backordered_quantity) < oi.quantity
                     )
-                    THEN 'PENDING'
+                    THEN CASE
+                            WHEN o.status = 'PROCESSING' THEN 'PROCESSING'
+                            ELSE 'PENDING'
+                        END
 
                     WHEN EXISTS (
                         SELECT 1

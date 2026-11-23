@@ -1,9 +1,9 @@
 
 package com.bookstore.outbox.infrastructure;
 
+import com.bookstore.outbox.application.OutboxClaimService;
 import com.bookstore.outbox.application.port.OutboxRepository;
 import com.bookstore.outbox.domain.OutboxEvent;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,10 +26,12 @@ public class OutboxPublisher {
 
     private final OutboxRepository repository;
     private final KafkaOutboxProducer producer;
+    private final OutboxClaimService outboxClaimService;
 
-    public OutboxPublisher(OutboxRepository repository, KafkaOutboxProducer producer) {
+    public OutboxPublisher(OutboxRepository repository, KafkaOutboxProducer producer, OutboxClaimService outboxClaimService) {
         this.repository = repository;
         this.producer = producer;
+        this.outboxClaimService = outboxClaimService;
     }
 
     @Scheduled(fixedDelayString = "${bookstore.outbox.poll-delay-ms:5000}", initialDelay = 10000)
@@ -43,7 +45,7 @@ public class OutboxPublisher {
                     .now(ZoneOffset.UTC)
                     .plusMinutes(CLAIM_DURATION_MINUTES);
 
-            List<OutboxEvent> events = repository.claimPending(BATCH_SIZE, claimToken, lockedUntil);
+            List<OutboxEvent> events = outboxClaimService.claimAndMark(BATCH_SIZE, claimToken, lockedUntil);
 
             for (OutboxEvent event : events) {
                 if (Thread.currentThread().isInterrupted()) {

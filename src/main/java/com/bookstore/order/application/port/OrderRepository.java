@@ -28,9 +28,7 @@ public interface OrderRepository {
 
     List<OrderItem> findItemsByOrderId(Long orderId);
 
-    List<OrderItem> findBackorderedItemsByBookId(Long bookId);
-
-    void updateStatus(Long orderId, OrderStatus status);
+    int markProcessingIfPending(Long orderId);
 
     //return both pending and backordered, oldest first
     List<OrderItem> findOutstandingItemsByBookId(Long bookId);
