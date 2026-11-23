@@ -43,7 +43,7 @@ public class InventoryAllocationService {
 
         int availableStock = book.getStock();
 
-        // Includes PENDING and BACKORDERED orders, sorted by creation time (oldest first).
+        // Includes PENDING PROCESSING and BACKORDERED orders, sorted by creation time (oldest first).
         List<OrderItem> outstandingItems = orderRepository.findOutstandingItemsByBookId(bookId);
 
         Set<Long> affectedOrderIds = new HashSet<>();

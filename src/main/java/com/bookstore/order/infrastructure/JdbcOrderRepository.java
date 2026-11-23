@@ -15,7 +15,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Repository
@@ -206,13 +205,7 @@ public class JdbcOrderRepository implements OrderRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("orderId", orderId);
 
-        int updatedRows = jdbc.update(sql, params);
-
-        if (updatedRows != 1) {
-            throw new NoSuchElementException("Order not found: " + orderId);
-        }
-
-        return updatedRows;
+        return jdbc.update(sql, params);
     }
 
     // includes:
