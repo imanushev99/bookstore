@@ -39,12 +39,18 @@ public class OrderProcessingService {
     }
 
     // BEGIN
-    // 1. Deduplicate the Kafka event to prevent repeated processing.
-    // 2. Retrieve the submitted order and identify its distinct books.
-    // 3. For each book, allocate available inventory across ALL outstanding
-    //    orders, prioritizing the oldest orders regardless of Kafka event order.
-    // 4. Update allocated/backordered quantities and affected order statuses.
+    //    Deduplicate Kafka event
+    //    Load and validate order
+    //    Find distinct book IDs
+    //
+    //    For each book:
+    //        Lock book row
+    //        Find outstanding orders (oldest first)
+    //        Allocate available inventory
+    //        Update order items
+    //        Recalculate order statuses
     // COMMIT
+    // Acknowledge Kafka message
     @Transactional
     public void processOrder(UUID eventId, Long orderId) {
         // Prevent processing the same Kafka event twice (deduplication)

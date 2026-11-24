@@ -23,6 +23,10 @@ public class OutboxClaimService {
         this.orderRepository = orderRepository;
     }
 
+    // BEGIN
+    //    Claim pending outbox events
+    //    Mark associated PENDING orders as PROCESSING
+    //COMMIT
     @Transactional
     public List<OutboxEvent> claimAndMark(int batchSize, UUID claimToken, OffsetDateTime lockedUntil) {
 

@@ -102,7 +102,8 @@ public class JdbcBookRepository implements BookRepository {
     }
 
 
-    // FOR SHARE allows reads only
+    // FOR SHARE allows reads only; multiple transactions can acquire the same lock
+    // FOR UPDATE blocks writes and reads for other transactions; only one transaction can acquire the lock
     @Override
     public Optional<Book> findByIdForShare(Long id) {
         String sql = """
