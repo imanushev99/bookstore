@@ -208,6 +208,31 @@ public class JdbcOrderRepository implements OrderRepository {
         return jdbc.update(sql, params);
     }
 
+    @Override
+    public int markShippedIfConfirmedAndAllocated(Long orderId) {
+        String sql = """
+                UPDATE orders o
+                SET status = 'SHIPPED', updated_at = CURRENT_TIMESTAMP
+                WHERE o.id = :orderId AND o.status = 'CONFIRMED'
+                  AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM order_items oi WHERE oi.order_id = o.id
+                      AND (oi.allocated_quantity <> oi.quantity OR oi.backordered_quantity <> 0)
+                  )
+                """;
+        return jdbc.update(sql, new MapSqlParameterSource("orderId", orderId));
+    }
+
+    @Override
+    public int markDeliveredIfShipped(Long orderId) {
+        String sql = """
+                UPDATE orders
+                SET status = 'DELIVERED', updated_at = CURRENT_TIMESTAMP
+                WHERE id = :orderId AND status = 'SHIPPED'
+                """;
+        return jdbc.update(sql, new MapSqlParameterSource("orderId", orderId));
+    }
+
     // includes:
     //   Orders awaiting initial processing (PENDING).
     //   Orders currently being processed (PROCESSING).

@@ -6,6 +6,7 @@ import com.bookstore.category.application.exception.CategoryAlreadyExistsExcepti
 import com.bookstore.category.application.exception.CategoryInUseException;
 import com.bookstore.idempotency.application.exception.IdempotencyKeyConflictException;
 import com.bookstore.idempotency.application.exception.IdempotencyRequestInProgressException;
+import com.bookstore.order.application.exception.InvalidOrderStatusTransitionException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,6 +118,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BookAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>> handleBookAlreadyExists(BookAlreadyExistsException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidOrderStatusTransitionException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidOrderStatusTransition(
+            InvalidOrderStatusTransitionException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", exception.getMessage()));
     }

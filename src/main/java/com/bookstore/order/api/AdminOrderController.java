@@ -2,6 +2,12 @@
 package com.bookstore.order.api;
 
 import com.bookstore.common.api.PageResponse;
+import com.bookstore.common.security.SecurityUtils;
+import com.bookstore.idempotency.application.IdempotencyService;
+import com.bookstore.idempotency.application.RequestHasher;
+import com.bookstore.idempotency.domain.IdempotencyOperation;
+import org.springframework.http.ResponseEntity;
+import java.util.Map;
 import com.bookstore.order.api.dto.OrderResponse;
 import com.bookstore.order.application.OrderService;
 
@@ -17,8 +23,32 @@ public class AdminOrderController {
 
     private final OrderService orderService;
 
-    public AdminOrderController(OrderService orderService) {
+    private final IdempotencyService idempotencyService;
+    private final RequestHasher requestHasher;
+
+    public AdminOrderController(OrderService orderService, IdempotencyService idempotencyService,
+                                RequestHasher requestHasher) {
         this.orderService = orderService;
+        this.idempotencyService = idempotencyService;
+        this.requestHasher = requestHasher;
+    }
+
+    @PostMapping("/{id}/ship")
+    public ResponseEntity<?> shipOrder(@PathVariable Long id,
+                                       @RequestHeader("Idempotency-Key") String key) {
+        return idempotencyService.execute(SecurityUtils.getCurrentUserId(),
+                IdempotencyOperation.SHIP_ORDER, key,
+                requestHasher.hash("POST /api/admin/orders/" + id + "/ship", Map.of()),
+                () -> ResponseEntity.ok(orderService.markAsShipped(id)));
+    }
+
+    @PostMapping("/{id}/deliver")
+    public ResponseEntity<?> deliverOrder(@PathVariable Long id,
+                                          @RequestHeader("Idempotency-Key") String key) {
+        return idempotencyService.execute(SecurityUtils.getCurrentUserId(),
+                IdempotencyOperation.DELIVER_ORDER, key,
+                requestHasher.hash("POST /api/admin/orders/" + id + "/deliver", Map.of()),
+                () -> ResponseEntity.ok(orderService.markAsDelivered(id)));
     }
 
     @GetMapping

@@ -1,0 +1,18 @@
+@baseUrl = http://localhost:8080
+@orderId = 1
+@shipKey = replace-with-unique-ship-key
+@deliverKey = replace-with-unique-deliver-key
+
+### Ship a confirmed order (repeat with same key to replay)
+POST {{baseUrl}}/api/admin/orders/{{orderId}}/ship
+Authorization: Bearer {{adminAccessToken}}
+Idempotency-Key: {{shipKey}}
+
+### Deliver a shipped order
+POST {{baseUrl}}/api/admin/orders/{{orderId}}/deliver
+Authorization: Bearer {{adminAccessToken}}
+Idempotency-Key: {{deliverKey}}
+
+### Read updated order
+GET {{baseUrl}}/api/admin/orders/{{orderId}}
+Authorization: Bearer {{adminAccessToken}}

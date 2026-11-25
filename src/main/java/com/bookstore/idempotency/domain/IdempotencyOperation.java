@@ -4,5 +4,7 @@ public enum IdempotencyOperation {
 
     CREATE_BOOK,
     CREATE_ORDER,
-    RESTOCK_BOOK
+    RESTOCK_BOOK,
+    SHIP_ORDER,
+    DELIVER_ORDER
 }

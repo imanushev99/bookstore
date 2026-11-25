@@ -48,9 +48,13 @@ The consumer uses the `processed_kafka_events` table: inserting the event marker
 
 The current per-book locking and oldest-first query cover the main workflow, but **multi-book deadlocks, concurrent status updates, and strict ordering across uncommitted transactions still need hardening**.
 
+### Order fulfillment
+
+Administrators can ship a `CONFIRMED` order with at least one item and no outstanding allocations, then mark it `DELIVERED`. Both operations are synchronous, require an `Idempotency-Key`, and return the updated order. Conditional SQL updates protect against concurrent or repeated transitions; invalid transitions return 409. Missing orders return 404. Inventory quantities are unchanged. Backordered orders must first become confirmed. See `requests/order-fulfillment.http`.
+
 ### HTTP idempotency
 
-`POST /api/books`, `POST /api/orders`, and the restock endpoint require an `Idempotency-Key` header. The database uniquely identifies a request by **(user ID, operation, key)**:
+`POST /api/books`, `POST /api/orders`, the restock endpoint, and the admin shipping/delivery endpoints require an `Idempotency-Key` header. The database uniquely identifies a request by **(user ID, operation, key)**:
 
 - **Same key + same request hash:** replay the original HTTP status/body without repeating the operation.
 - **Same key + changed payload:** return `409 Conflict`.
@@ -114,12 +118,14 @@ The claim, business action, and saved response commit in **one transaction**. Re
 | `POST /api/orders` | Idempotent checkout |
 | `GET /api/orders`, `GET /api/orders/{id}` | Customer order history |
 | `GET /api/admin/orders` | Paginated admin order list |
+| `POST /api/admin/orders/{id}/ship` | Ship a confirmed, fully allocated order |
+| `POST /api/admin/orders/{id}/deliver` | Deliver a shipped order |
 | `POST /api/books/{bookId}/restock` | Idempotent admin restock |
 
 ## Known trade-offs and next steps
 
 1. **Concurrency.** A PostgreSQL integration test verifies that two simultaneous creates with the same ISBN result in one committed book and one conflict. Multi-book inventory locking, retries after deadlocks, and allocation priority under concurrent updates still need coverage and hardening.
-2. **Order lifecycle.** Add cancellation that releases allocated stock, plus shipping and delivery status transitions.
+2. **Order lifecycle.** Add cancellation that releases allocated stock. Shipping and delivery are implemented.
 3. **Kafka resilience.** The outbox retries failed publishes. Define consumer retry and dead-letter handling, and implement restock notifications if they are needed.
 4. **Observability.** Controllers log endpoint entry at `INFO`, and request validation failures are logged at `DEBUG`. Key service writes log after commit, and order submission and processing logs include order and event IDs. Request correlation across components, metrics, and health monitoring remain open.
 5. **Testing.** Book and category services have unit tests. The duplicate-ISBN race runs against PostgreSQL 17 with Flyway and Testcontainers when Docker is available. Expand coverage for HTTP authorization, checkout idempotency, Kafka redelivery, and inventory concurrency.

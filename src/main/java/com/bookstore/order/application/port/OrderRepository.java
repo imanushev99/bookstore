@@ -30,6 +30,10 @@ public interface OrderRepository {
 
     int markProcessingIfPending(Long orderId);
 
+    int markShippedIfConfirmedAndAllocated(Long orderId);
+
+    int markDeliveredIfShipped(Long orderId);
+
     //return both pending and backordered, oldest first
     List<OrderItem> findOutstandingItemsByBookId(Long bookId);
 

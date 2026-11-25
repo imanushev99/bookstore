@@ -11,6 +11,7 @@ import com.bookstore.common.application.AfterCommit;
 import com.bookstore.order.api.dto.OrderItemResponse;
 import com.bookstore.order.api.dto.OrderResponse;
 import com.bookstore.order.application.event.OrderSubmittedEvent;
+import com.bookstore.order.application.exception.InvalidOrderStatusTransitionException;
 import com.bookstore.order.application.port.OrderRepository;
 import com.bookstore.order.domain.Order;
 import com.bookstore.order.domain.OrderItem;
@@ -201,6 +202,38 @@ public class OrderService {
         long total = orderRepository.countAll();
 
         return new PageResponse<>(orders, page, size, total);
+    }
+
+    @Transactional
+    public OrderResponse markAsShipped(Long orderId) {
+        validateOrderId(orderId);
+        int updated = orderRepository.markShippedIfConfirmedAndAllocated(orderId);
+        return completeTransition(orderId, updated, OrderStatus.SHIPPED,
+                "Only CONFIRMED orders with fully allocated items can be shipped");
+    }
+
+    @Transactional
+    public OrderResponse markAsDelivered(Long orderId) {
+        validateOrderId(orderId);
+        int updated = orderRepository.markDeliveredIfShipped(orderId);
+        return completeTransition(orderId, updated, OrderStatus.DELIVERED,
+                "Only SHIPPED orders can be delivered");
+    }
+
+    private void validateOrderId(Long orderId) {
+        if (orderId == null || orderId <= 0) {
+            throw new IllegalArgumentException("Valid order ID is required");
+        }
+    }
+
+    private OrderResponse completeTransition(Long orderId, int updated, OrderStatus target, String error) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NoSuchElementException("Order not found"));
+        if (updated != 1) {
+            throw new InvalidOrderStatusTransitionException(error);
+        }
+        AfterCommit.run(() -> log.info("Order status updated orderId={} status={}", orderId, target));
+        return toResponse(order);
     }
 
     private void validatePagination(int page, int size) {
