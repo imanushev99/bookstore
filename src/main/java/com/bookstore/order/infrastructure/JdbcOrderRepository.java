@@ -131,7 +131,7 @@ public class JdbcOrderRepository implements OrderRepository {
                 SELECT *
                 FROM orders
                 WHERE id = :id
-                FOR UPDATE NOWAIT
+                FOR UPDATE
                 """;
 
         MapSqlParameterSource params =
@@ -229,6 +229,17 @@ public class JdbcOrderRepository implements OrderRepository {
                 UPDATE orders
                 SET status = 'DELIVERED', updated_at = CURRENT_TIMESTAMP
                 WHERE id = :orderId AND status = 'SHIPPED'
+                """;
+        return jdbc.update(sql, new MapSqlParameterSource("orderId", orderId));
+    }
+
+    @Override
+    public int markCancelledIfNotShipped(Long orderId) {
+        String sql = """
+                UPDATE orders
+                SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP
+                WHERE id = :orderId
+                  AND status IN ('PENDING', 'PROCESSING', 'CONFIRMED', 'BACKORDERED')
                 """;
         return jdbc.update(sql, new MapSqlParameterSource("orderId", orderId));
     }

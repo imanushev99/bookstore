@@ -54,6 +54,16 @@ public class OrderController {
         );
     }
 
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable Long id,
+                                         @RequestHeader("Idempotency-Key") String key) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return idempotencyService.execute(userId,
+                IdempotencyOperation.CANCEL_ORDER, key,
+                requestHasher.hash("POST /api/orders/" + id + "/cancel", Map.of()),
+                () -> ResponseEntity.ok(orderService.cancelMyOrder(userId, id)));
+    }
+
     @GetMapping
     public PageResponse<OrderResponse> getMyOrders(
             @RequestParam(defaultValue = "0") int page,

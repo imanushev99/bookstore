@@ -8,6 +8,7 @@ import com.bookstore.cart.domain.Cart;
 import com.bookstore.cart.domain.CartItem;
 import com.bookstore.common.api.PageResponse;
 import com.bookstore.common.application.AfterCommit;
+import com.bookstore.inventory.application.InventoryAllocationService;
 import com.bookstore.order.api.dto.OrderItemResponse;
 import com.bookstore.order.api.dto.OrderResponse;
 import com.bookstore.order.application.event.OrderSubmittedEvent;
@@ -26,10 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -41,18 +40,21 @@ public class OrderService {
     private final BookRepository bookRepository;
     private final OutboxRepository outboxRepository;
     private final JsonMapper jsonMapper;
+    private final InventoryAllocationService inventoryAllocationService;
 
     public OrderService(
             OrderRepository orderRepository,
             CartRepository cartRepository,
             BookRepository bookRepository,
             OutboxRepository outboxRepository,
-            JsonMapper jsonMapper) {
+            JsonMapper jsonMapper,
+            InventoryAllocationService inventoryAllocationService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.bookRepository = bookRepository;
         this.outboxRepository = outboxRepository;
         this.jsonMapper = jsonMapper;
+        this.inventoryAllocationService = inventoryAllocationService;
     }
 
     /**
@@ -218,6 +220,100 @@ public class OrderService {
         int updated = orderRepository.markDeliveredIfShipped(orderId);
         return completeTransition(orderId, updated, OrderStatus.DELIVERED,
                 "Only SHIPPED orders can be delivered");
+    }
+
+    @Transactional
+    public OrderResponse cancelMyOrder(Long userId, Long orderId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+        return cancelOrder(orderId, userId);
+    }
+
+    @Transactional
+    public OrderResponse cancelOrderAsAdmin(Long orderId) {
+        return cancelOrder(orderId, null);
+    }
+
+    // The HTTP idempotency claim, cancellation, stock refund and reassignment all
+    // participate in the same transaction. Lock books before the order, matching
+    // the allocation worker's book -> order lock order to avoid deadlocks.
+    private OrderResponse cancelOrder(Long orderId, Long requestingUserId) {
+        validateOrderId(orderId);
+
+        // Order items are immutable regarding their book IDs. Read their IDs first,
+        // but reread allocations after acquiring the book and order row locks.
+
+        // Always acquire book locks before the order lock to maintain a consistent
+        // locking order with InventoryAllocationService.
+        //
+        // Inventory allocation locks the book first, updates order item allocations,
+        // and then updates the order status, acquiring an order row lock.
+        //
+        // Reversing this sequence could cause a deadlock between order cancellation
+        // and concurrent inventory allocation or restocking.
+        List<Long> bookIds = orderRepository.findItemsByOrderId(orderId).stream()
+                .map(OrderItem::getBookId)
+                .distinct()
+                .sorted()
+                .toList();
+
+        for (Long bookId : bookIds) {
+            // This lock includes archived books; orders can outlive catalog listings.
+            bookRepository.findByIdForInventoryUpdate(bookId)
+                    .orElseThrow(() -> new NoSuchElementException("Book not found: " + bookId));
+        }
+
+        Order locked = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new NoSuchElementException("Order not found"));
+        ensureOwner(locked, requestingUserId);
+        if (locked.getStatus() == OrderStatus.CANCELLED) {
+            return toResponse(locked);
+        }
+        ensureCancellable(locked);
+
+        List<OrderItem> items = orderRepository.findItemsByOrderId(orderId);
+
+        if (orderRepository.markCancelledIfNotShipped(orderId) != 1) {
+            throw new InvalidOrderStatusTransitionException("Only unshipped orders can be cancelled");
+        }
+
+        Set<Long> refundedBookIds = new TreeSet<>();
+
+        // Restore allocated inventory and reset outstanding quantities.
+        for (OrderItem item : items) {
+            if (item.getAllocatedQuantity() > 0) {
+                bookRepository.increaseStock(item.getBookId(), item.getAllocatedQuantity());
+                refundedBookIds.add(item.getBookId());
+            }
+
+            if (item.getAllocatedQuantity() > 0 || item.getBackorderedQuantity() > 0) {
+                orderRepository.updateItemAllocation(item.getId(), 0, 0);
+            }
+        }
+
+        // Redistribute restored inventory to outstanding orders.
+        refundedBookIds.forEach(inventoryAllocationService::allocateOutstandingForBook);
+
+        Order cancelled = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NoSuchElementException("Order not found"));
+
+        AfterCommit.run(() -> log.info("Order cancelled orderId={}", orderId));
+
+        return toResponse(cancelled);
+    }
+
+    private void ensureOwner(Order order, Long requestingUserId) {
+        if (requestingUserId != null && !order.getUserId().equals(requestingUserId)) {
+            // Do not disclose other customers' order IDs.
+            throw new NoSuchElementException("Order not found");
+        }
+    }
+
+    private void ensureCancellable(Order order) {
+        if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED) {
+            throw new InvalidOrderStatusTransitionException("Only unshipped orders can be cancelled");
+        }
     }
 
     private void validateOrderId(Long orderId) {

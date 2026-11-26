@@ -409,7 +409,7 @@ public class JdbcBookRepository implements BookRepository {
     @Override
     public void increaseStock(Long bookId, int quantity) {
         if (quantity <= 0) {
-            throw new IllegalArgumentException("Restock quantity must be positive");
+            throw new IllegalArgumentException("Stock increment must be positive");
         }
 
         String sql = """
@@ -417,7 +417,6 @@ public class JdbcBookRepository implements BookRepository {
             SET stock = stock + :quantity,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = :bookId
-              AND archived_at IS NULL
               AND stock <= 2147483647 - :quantity
             """;
 
@@ -428,7 +427,7 @@ public class JdbcBookRepository implements BookRepository {
         int updatedRows = jdbc.update(sql, params);
 
         if (updatedRows != 1) {
-            throw new IllegalStateException("Unable to restock book: " + bookId);
+            throw new IllegalStateException("Unable to increase stock for book: " + bookId);
         }
     }
 

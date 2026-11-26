@@ -1,0 +1,23 @@
+@baseUrl = http://localhost:8080
+@orderId = 1
+@cancelKey = replace-with-a-new-unique-key
+@adminCancelKey = replace-with-a-different-unique-key
+
+### Customer: cancel own order before shipment
+POST {{baseUrl}}/api/orders/{{orderId}}/cancel
+Authorization: Bearer {{userAccessToken}}
+Idempotency-Key: {{cancelKey}}
+
+### Repeat the request with the same key to replay the original response
+POST {{baseUrl}}/api/orders/{{orderId}}/cancel
+Authorization: Bearer {{userAccessToken}}
+Idempotency-Key: {{cancelKey}}
+
+### Admin: cancel any unshipped order
+POST {{baseUrl}}/api/admin/orders/{{orderId}}/cancel
+Authorization: Bearer {{adminAccessToken}}
+Idempotency-Key: {{adminCancelKey}}
+
+### Read final order state (allocations are zero after cancellation)
+GET {{baseUrl}}/api/orders/{{orderId}}
+Authorization: Bearer {{userAccessToken}}

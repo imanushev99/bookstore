@@ -33,6 +33,15 @@ public class AdminOrderController {
         this.requestHasher = requestHasher;
     }
 
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable Long id,
+                                         @RequestHeader("Idempotency-Key") String key) {
+        return idempotencyService.execute(SecurityUtils.getCurrentUserId(),
+                IdempotencyOperation.CANCEL_ORDER, key,
+                requestHasher.hash("POST /api/admin/orders/" + id + "/cancel", Map.of()),
+                () -> ResponseEntity.ok(orderService.cancelOrderAsAdmin(id)));
+    }
+
     @PostMapping("/{id}/ship")
     public ResponseEntity<?> shipOrder(@PathVariable Long id,
                                        @RequestHeader("Idempotency-Key") String key) {

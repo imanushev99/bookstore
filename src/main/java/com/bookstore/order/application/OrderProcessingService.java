@@ -1,5 +1,6 @@
 package com.bookstore.order.application;
 
+import com.bookstore.book.application.port.BookRepository;
 import com.bookstore.common.application.AfterCommit;
 import com.bookstore.inventory.application.InventoryAllocationService;
 import com.bookstore.messaging.application.port.ProcessedEventRepository;
@@ -26,14 +27,17 @@ public class OrderProcessingService {
     private static final String CONSUMER_NAME = "ORDER_PROCESSOR";
 
     private final OrderRepository orderRepository;
+    private final BookRepository bookRepository;
     private final InventoryAllocationService inventoryAllocationService;
     private final ProcessedEventRepository processedEventRepository;
 
     public OrderProcessingService(
             OrderRepository orderRepository,
+            BookRepository bookRepository,
             InventoryAllocationService inventoryAllocationService,
             ProcessedEventRepository processedEventRepository) {
         this.orderRepository = orderRepository;
+        this.bookRepository = bookRepository;
         this.inventoryAllocationService = inventoryAllocationService;
         this.processedEventRepository = processedEventRepository;
     }
@@ -43,8 +47,8 @@ public class OrderProcessingService {
     //    Load and validate order
     //    Find distinct book IDs
     //
+    //    Lock all book rows in ID order
     //    For each book:
-    //        Lock book row
     //        Find outstanding orders (oldest first)
     //        Allocate available inventory
     //        Update order items
@@ -81,6 +85,14 @@ public class OrderProcessingService {
                 .distinct()
                 .sorted()
                 .toList();
+
+        // Allocation can lock other orders while refreshing their statuses.
+        // Lock every book first so cancellation cannot hold a later book
+        // while waiting for an order row this transaction already holds.
+        for (Long bookId : bookIds) {
+            bookRepository.findByIdForInventoryUpdate(bookId)
+                    .orElseThrow(() -> new NoSuchElementException("Book not found: " + bookId));
+        }
 
         for (Long bookId : bookIds) {
             inventoryAllocationService.allocateOutstandingForBook(bookId);

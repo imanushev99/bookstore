@@ -23,7 +23,7 @@ class OrderFulfillmentTest {
     @BeforeEach
     void setUp() {
         repository = mock(OrderRepository.class);
-        service = new OrderService(repository, null, null, null, null);
+        service = new OrderService(repository, null, null, null, null, null);
     }
 
     private void existing(OrderStatus status) {
